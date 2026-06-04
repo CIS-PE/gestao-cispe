@@ -1,0 +1,1512 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CIS-PE — Gestão de Demandas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:#F2F1EE;color:#1C1B18;min-height:100vh;font-size:14px}
+:root{
+  --bg:#FFFFFF;--bg2:#F2F1EE;--bg3:#E8E7E2;--bg4:#DDDCDA;
+  --text:#1C1B18;--text2:#5C5B55;--text3:#9C9B93;
+  --border:rgba(0,0,0,0.09);--border2:rgba(0,0,0,0.16);
+  --r:8px;--r-lg:12px;--r-xl:16px;
+  --blue:#1660B8;--blue-lt:#E8F0FA;--blue-dk:#0D4A90;
+  --teal:#0C6E52;--teal-lt:#E0F2EB;
+  --amber:#B8720F;--amber-lt:#FAF0DC;
+  --red:#B02828;--red-lt:#FCEAEA;
+  --green:#3A6A10;--green-lt:#EBF5DE;
+  --gray:#5C5B55;--gray-lt:#EEEEE8;
+  --purple:#5040B8;--purple-lt:#EEECFC;
+  --shadow:0 1px 3px rgba(0,0,0,.07),0 4px 12px rgba(0,0,0,.05);
+  --shadow-md:0 2px 8px rgba(0,0,0,.09),0 8px 24px rgba(0,0,0,.07);
+  --chat-w:320px;
+}
+
+/* ── TOPBAR ── */
+.topbar{
+  background:#0D4A90;color:#fff;
+  padding:0 24px;height:52px;display:flex;align-items:center;justify-content:space-between;
+  position:sticky;top:0;z-index:100;
+}
+.topbar-logo{font-size:15px;font-weight:600;letter-spacing:.2px;display:flex;align-items:center;gap:9px}
+.topbar-logo i{font-size:20px;opacity:.9}
+.topbar-right{display:flex;align-items:center;gap:8px}
+.role-sel{
+  display:flex;align-items:center;gap:6px;
+  background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.25);
+  color:#fff;padding:5px 12px;border-radius:20px;font-size:12.5px;cursor:pointer;
+  font-family:inherit;font-weight:500;
+}
+.role-sel option{color:#111;background:#fff}
+.role-badge{
+  padding:4px 11px;border-radius:20px;font-size:11.5px;font-weight:600;letter-spacing:.3px;
+  text-transform:uppercase;
+}
+.rb-apoio{background:rgba(12,110,82,.9);color:#fff}
+.rb-gestao{background:rgba(176,40,40,.85);color:#fff}
+
+/* ── CHAT SIDEBAR BTN ── */
+.chat-toggle-btn{
+  width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.25);
+  color:#fff;font-size:17px;cursor:pointer;transition:background .15s;position:relative;
+}
+.chat-toggle-btn:hover{background:rgba(255,255,255,.25)}
+.chat-dot{
+  position:absolute;top:3px;right:3px;width:9px;height:9px;border-radius:50%;
+  background:#E83D3D;border:2px solid #0D4A90;display:none;
+}
+.chat-dot.show{display:block}
+
+/* ── NAV ── */
+.nav{
+  display:flex;gap:2px;padding:6px 16px;
+  background:var(--bg);border-bottom:1px solid var(--border);
+  position:sticky;top:52px;z-index:90;flex-wrap:wrap;
+}
+.nav-btn{
+  padding:7px 15px;border-radius:var(--r);cursor:pointer;font-size:13px;font-weight:400;
+  border:none;background:transparent;color:var(--text2);
+  display:flex;align-items:center;gap:6px;transition:all .15s;font-family:inherit;
+}
+.nav-btn:hover{background:var(--bg3);color:var(--text)}
+.nav-btn.active{background:var(--bg3);color:var(--blue);font-weight:600;border:1px solid var(--border2)}
+.nav-btn i{font-size:16px}
+.nbadge{background:var(--red);color:#fff;border-radius:10px;padding:1px 6px;font-size:11px;font-weight:600;min-width:18px;text-align:center}
+
+/* ── LAYOUT ── */
+.app-body{display:flex;transition:padding-right .3s}
+.app-body.chat-open{padding-right:var(--chat-w)}
+.content{padding:20px 24px;max-width:1200px;margin:0 auto;flex:1;min-width:0}
+.section{display:none}.section.active{display:block}
+@media(max-width:600px){.content{padding:14px 12px}}
+
+/* ── CHAT SIDEBAR ── */
+.chat-sidebar{
+  position:fixed;top:52px;right:0;bottom:0;width:var(--chat-w);
+  background:var(--bg);border-left:1px solid var(--border2);
+  display:flex;flex-direction:column;z-index:80;
+  transform:translateX(100%);transition:transform .25s ease;
+  box-shadow:-4px 0 20px rgba(0,0,0,.08);
+}
+.chat-sidebar.open{transform:translateX(0)}
+.chat-header{
+  padding:12px 14px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;
+  background:#0D4A90;color:#fff;
+}
+.chat-header-title{font-size:13px;font-weight:600;display:flex;align-items:center;gap:7px}
+.chat-close{background:none;border:none;cursor:pointer;color:rgba(255,255,255,.8);font-size:17px;line-height:1;padding:2px}
+.chat-close:hover{color:#fff}
+.chat-role-label{
+  padding:8px 12px;border-bottom:1px solid var(--border);
+  font-size:11.5px;color:var(--text3);display:flex;align-items:center;gap:6px;
+  background:var(--bg3);
+}
+.online-dot{width:7px;height:7px;border-radius:50%;background:#22C55E;display:inline-block}
+.chat-messages{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px}
+.chat-bubble{max-width:85%;padding:9px 12px;border-radius:12px;font-size:13px;line-height:1.5;position:relative;word-break:break-word}
+.chat-bubble.sent{background:var(--blue);color:#fff;align-self:flex-end;border-bottom-right-radius:3px}
+.chat-bubble.recv{background:var(--bg3);color:var(--text);align-self:flex-start;border-bottom-left-radius:3px}
+.chat-bubble .cb-from{font-size:10.5px;font-weight:700;opacity:.8;margin-bottom:3px;text-transform:uppercase;letter-spacing:.3px}
+.chat-bubble.recv .cb-from{color:var(--blue)}
+.chat-bubble .cb-time{font-size:10.5px;opacity:.65;margin-top:4px;text-align:right}
+.chat-bubble.sent .cb-time{color:rgba(255,255,255,.75)}
+.chat-input-area{
+  padding:10px 12px;border-top:1px solid var(--border);
+  display:flex;gap:7px;align-items:center;background:var(--bg);
+}
+.chat-input{
+  flex:1;padding:9px 11px;border-radius:20px;border:1px solid var(--border2);
+  background:var(--bg3);color:var(--text);font-size:13px;font-family:inherit;
+  resize:none;outline:none;transition:border-color .15s;
+}
+.chat-input:focus{border-color:var(--blue);background:var(--bg)}
+.chat-send{
+  width:34px;height:34px;border-radius:50%;background:var(--blue);color:#fff;
+  border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  font-size:15px;flex-shrink:0;transition:background .15s;
+}
+.chat-send:hover{background:var(--blue-dk)}
+.chat-empty{text-align:center;color:var(--text3);font-size:12px;padding:30px 10px;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px}
+.chat-empty i{font-size:36px;opacity:.15}
+
+/* ── CARDS PAINEL ── */
+.stat-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:18px}
+@media(max-width:900px){.stat-grid{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:600px){.stat-grid{grid-template-columns:1fr 1fr}}
+.stat-card{
+  background:var(--bg);border:1px solid var(--border);border-radius:var(--r-lg);
+  padding:14px 16px;cursor:pointer;transition:all .2s;position:relative;overflow:hidden;
+  box-shadow:var(--shadow);
+}
+.stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:var(--r-lg) var(--r-lg) 0 0}
+.stat-card.sc-red::before{background:var(--red)}
+.stat-card.sc-teal::before{background:var(--teal)}
+.stat-card.sc-blue::before{background:var(--blue)}
+.stat-card.sc-amber::before{background:var(--amber)}
+.stat-card.sc-purple::before{background:var(--purple)}
+.stat-card.sc-gray::before{background:var(--text3)}
+.stat-card:hover{border-color:var(--border2);transform:translateY(-1px);box-shadow:var(--shadow-md)}
+.stat-num{font-size:28px;font-weight:600;line-height:1;margin-bottom:4px}
+.stat-lbl{font-size:10.5px;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;font-weight:500}
+.stat-arrow{position:absolute;bottom:12px;right:12px;color:var(--text3);font-size:15px;opacity:.6}
+
+/* ── GRID PAINEL ── */
+.dash-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:800px){.dash-grid{grid-template-columns:1fr}}
+
+/* ── TODO ── */
+.todo-wrap{background:var(--bg);border:1px solid var(--border);border-radius:var(--r-lg);padding:16px;box-shadow:var(--shadow);margin-bottom:16px}
+.todo-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.todo-title{font-size:13px;font-weight:600;display:flex;align-items:center;gap:7px;color:var(--text)}
+.todo-add-row{display:flex;gap:7px;margin-bottom:10px}
+.todo-add-row input{flex:1;padding:8px 11px;border-radius:var(--r);border:1px solid var(--border2);background:var(--bg3);color:var(--text);font-size:13px;font-family:inherit;outline:none}
+.todo-add-row input:focus{border-color:var(--blue);background:var(--bg)}
+.todo-add-btn{padding:8px 13px;border-radius:var(--r);background:var(--blue);color:#fff;border:none;cursor:pointer;font-size:13px;font-family:inherit;font-weight:500}
+.todo-item{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:var(--r);margin-bottom:5px;background:var(--bg3);transition:background .1s}
+.todo-item:hover{background:var(--bg4)}
+.todo-item input[type=checkbox]{width:16px;height:16px;cursor:pointer;accent-color:var(--teal);flex-shrink:0}
+.todo-item-text{flex:1;font-size:13px;color:var(--text);line-height:1.4}
+.todo-item-text.done{text-decoration:line-through;color:var(--text3)}
+.todo-del{background:none;border:none;cursor:pointer;color:var(--text3);font-size:14px;padding:2px 4px;border-radius:4px;line-height:1;opacity:.5}
+.todo-del:hover{opacity:1;color:var(--red)}
+.todo-empty{font-size:12px;color:var(--text3);text-align:center;padding:12px 0}
+
+/* ── ANOTAÇÕES ── */
+.notes-panel{background:var(--bg);border:1px solid var(--border);border-radius:var(--r-lg);padding:16px;box-shadow:var(--shadow)}
+.notes-title{font-size:13px;font-weight:600;display:flex;align-items:center;gap:7px;color:var(--text);margin-bottom:10px}
+.notes-status{font-size:11px;color:var(--text3);font-style:italic;height:14px}
+#notes-textarea{
+  width:100%;min-height:140px;resize:vertical;padding:10px;
+  border:1px solid var(--border2);border-radius:var(--r);
+  background:var(--bg3);color:var(--text);font-size:13px;font-family:inherit;line-height:1.6;
+  outline:none;transition:border-color .15s;
+}
+#notes-textarea:focus{border-color:var(--blue);background:var(--bg)}
+
+/* ── SEÇÃO HEADER ── */
+.section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px}
+.section-title{font-size:15px;font-weight:600;color:var(--text)}
+.section-sub{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;font-weight:500;margin-bottom:10px}
+
+/* ── BTN ADD ── */
+.btn-add{
+  background:var(--blue);color:#fff;border:none;padding:8px 16px;
+  border-radius:var(--r);font-size:13px;cursor:pointer;font-weight:600;
+  display:flex;align-items:center;gap:6px;transition:background .15s;font-family:inherit;
+}
+.btn-add:hover{background:var(--blue-dk)}
+.btn-add i{font-size:15px}
+
+/* ── FILTROS ── */
+.filters{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap}
+.filter-btn{
+  padding:5px 14px;border-radius:20px;font-size:12px;cursor:pointer;
+  border:1px solid var(--border2);background:transparent;color:var(--text2);
+  transition:all .15s;font-family:inherit;font-weight:500;
+}
+.filter-btn:hover,.filter-btn.active{background:var(--blue);color:#fff;border-color:var(--blue)}
+
+/* ── DEMANDA ITEM ── */
+.demand-item{
+  background:var(--bg);border:1px solid var(--border);border-radius:var(--r);
+  padding:12px 14px;margin-bottom:8px;display:flex;align-items:flex-start;gap:11px;
+  cursor:pointer;transition:all .15s;box-shadow:var(--shadow);
+}
+.demand-item:hover{border-color:var(--border2);box-shadow:var(--shadow-md)}
+.demand-item.selected{border:1.5px solid var(--blue);background:var(--blue-lt)}
+.d-icon{width:36px;height:36px;border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:17px}
+.d-info{flex:1;min-width:0}
+.d-title{font-size:13.5px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.d-meta{font-size:11.5px;color:var(--text2);margin-top:3px;display:flex;gap:10px;flex-wrap:wrap}
+.d-right{display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0}
+
+/* ── PILLS ── */
+.pill{font-size:11px;padding:3px 9px;border-radius:20px;font-weight:600;white-space:nowrap;display:inline-block;letter-spacing:.2px}
+.p-urgente{background:var(--red-lt);color:var(--red)}
+.p-alta{background:var(--amber-lt);color:var(--amber)}
+.p-media{background:var(--blue-lt);color:var(--blue)}
+.p-infraestrutura{background:var(--purple-lt);color:var(--purple)}
+.p-outros{background:var(--gray-lt);color:var(--gray)}
+.p-pendente{background:var(--gray-lt);color:var(--gray)}
+.p-andamento{background:var(--teal-lt);color:var(--teal)}
+.p-concluido{background:var(--green-lt);color:var(--green)}
+.tc-urgente{background:var(--red-lt);color:var(--red)}
+.tc-alta{background:var(--amber-lt);color:var(--amber)}
+.tc-media{background:var(--blue-lt);color:var(--blue)}
+.tc-infraestrutura{background:var(--purple-lt);color:var(--purple)}
+.tc-outros{background:var(--gray-lt);color:var(--gray)}
+.p-reuniao-tag{background:var(--teal-lt);color:var(--teal)}
+.p-evento-tag{background:var(--amber-lt);color:var(--amber)}
+.p-demanda-tag{background:var(--blue-lt);color:var(--blue)}
+
+/* ── TWO COL ── */
+.two-col{display:grid;grid-template-columns:1fr 360px;gap:16px}
+@media(max-width:900px){.two-col{grid-template-columns:1fr}}
+
+/* ── DETAIL PANEL ── */
+.detail-panel{background:var(--bg);border:1px solid var(--border);border-radius:var(--r-lg);padding:18px;position:sticky;top:120px;box-shadow:var(--shadow)}
+.dp-title{font-size:15px;font-weight:600;color:var(--text);margin-bottom:10px;line-height:1.4}
+.dp-desc{font-size:13px;color:var(--text2);line-height:1.65;margin-bottom:14px;padding:10px;background:var(--bg3);border-radius:var(--r)}
+.dp-row{display:flex;gap:10px;margin-bottom:7px;font-size:12.5px;align-items:flex-start}
+.dp-lbl{color:var(--text3);min-width:90px;font-size:11.5px;font-weight:500;padding-top:1px}
+.dp-val{color:var(--text);font-weight:500;flex:1}
+.action-row{display:flex;gap:7px;margin-top:14px;flex-wrap:wrap;padding-top:12px;border-top:1px solid var(--border)}
+.btn-sm{padding:6px 12px;border-radius:var(--r);font-size:12px;cursor:pointer;border:1px solid var(--border2);background:transparent;color:var(--text);display:flex;align-items:center;gap:5px;font-weight:500;transition:all .15s;font-family:inherit}
+.btn-sm:hover{background:var(--bg3)}
+.btn-sm.primary{background:var(--blue);color:#fff;border-color:var(--blue)}
+.btn-sm.primary:hover{background:var(--blue-dk)}
+.btn-sm.success{background:var(--teal);color:#fff;border-color:var(--teal)}
+.btn-sm.danger{background:var(--red-lt);color:var(--red);border-color:transparent}
+.btn-sm.warn{background:var(--amber-lt);color:var(--amber);border-color:transparent}
+
+/* ── AGENDA / CALENDÁRIO ── */
+.agenda-two-col{display:grid;grid-template-columns:295px 1fr;gap:20px}
+@media(max-width:750px){.agenda-two-col{grid-template-columns:1fr}}
+.agenda-header{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.agenda-month{font-size:14px;font-weight:600;flex:1}
+.month-nav{background:var(--bg);border:1px solid var(--border2);border-radius:7px;width:30px;height:30px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text2);transition:background .1s}
+.month-nav:hover{background:var(--bg3)}
+.cal-wrap{background:var(--bg);border:1px solid var(--border);border-radius:var(--r-lg);padding:12px;box-shadow:var(--shadow)}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+.cal-day-hdr{text-align:center;font-size:11px;color:var(--text3);padding:5px 0;font-weight:600}
+.cal-day{text-align:center;font-size:12.5px;padding:6px 2px;border-radius:6px;cursor:pointer;color:var(--text);transition:background .1s;position:relative}
+.cal-day:hover{background:var(--bg3)}
+.cal-day.today{background:var(--blue);color:#fff;font-weight:600}
+.cal-day.selected-day{background:var(--blue-lt);color:var(--blue);font-weight:600}
+.cal-day.today.selected-day{background:var(--blue);color:#fff}
+.cal-day.has-event::after{content:'';width:4px;height:4px;border-radius:50%;background:var(--amber);position:absolute;bottom:2px;left:50%;transform:translateX(-50%)}
+.cal-day.other-month{color:var(--text3);opacity:.35}
+
+/* ── EVENT ITEM ── */
+.event-item{padding:11px 13px;border-radius:var(--r);margin-bottom:9px;border-left:3px solid var(--blue);background:var(--bg);border-top:1px solid var(--border);border-right:1px solid var(--border);border-bottom:1px solid var(--border);box-shadow:var(--shadow)}
+.ev-title{font-size:13px;font-weight:600;color:var(--text)}
+.ev-meta{font-size:11.5px;color:var(--text2);margin-top:5px;display:flex;gap:10px;flex-wrap:wrap}
+.ev-meta i{font-size:13px;vertical-align:-2px;margin-right:3px}
+.ev-obs{font-size:12px;color:var(--text3);margin-top:5px;line-height:1.5}
+
+/* ── MODAIS ── */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;display:flex;align-items:center;justify-content:center;padding:16px;backdrop-filter:blur(2px)}
+.modal{background:var(--bg);border-radius:var(--r-xl);border:1px solid var(--border2);padding:22px;width:540px;max-width:100%;max-height:92vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.18)}
+.modal-title{font-size:15px;font-weight:600;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;color:var(--text)}
+.modal-close{background:none;border:none;cursor:pointer;color:var(--text2);font-size:20px;padding:2px;line-height:1;border-radius:4px}
+.modal-close:hover{color:var(--text);background:var(--bg3)}
+.form-group{margin-bottom:12px}
+.form-label{font-size:11.5px;color:var(--text2);margin-bottom:4px;display:block;font-weight:600;text-transform:uppercase;letter-spacing:.3px}
+.form-input,.form-select,.form-textarea{width:100%;padding:9px 11px;border-radius:var(--r);border:1px solid var(--border2);background:var(--bg);color:var(--text);font-size:13px;font-family:inherit;transition:border-color .15s}
+.form-input:focus,.form-select:focus,.form-textarea:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px var(--blue-lt)}
+.form-textarea{min-height:80px;resize:vertical;line-height:1.5}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+@media(max-width:480px){.form-row{grid-template-columns:1fr}}
+.btn-row{display:flex;gap:8px;justify-content:flex-end;margin-top:16px;padding-top:14px;border-top:1px solid var(--border)}
+.btn-cancel{padding:8px 16px;border-radius:var(--r);border:1px solid var(--border2);background:transparent;color:var(--text2);font-size:13px;cursor:pointer;font-family:inherit}
+.btn-save{padding:8px 18px;border-radius:var(--r);background:var(--blue);color:#fff;border:none;font-size:13px;cursor:pointer;font-weight:600;font-family:inherit;transition:background .15s}
+.btn-save:hover{background:var(--blue-dk)}
+
+/* ── EMPTY STATE ── */
+.empty-state{text-align:center;padding:44px 20px;color:var(--text3)}
+.empty-state i{font-size:40px;margin-bottom:12px;display:block;opacity:.2}
+.empty-state p{font-size:13px}
+
+/* ── TOAST ── */
+.toast{position:fixed;bottom:22px;right:22px;background:var(--teal);color:#fff;padding:10px 17px;border-radius:var(--r);font-size:13px;font-weight:500;z-index:9999;transform:translateY(80px);opacity:0;transition:all .3s;pointer-events:none;display:flex;align-items:center;gap:8px;box-shadow:var(--shadow-md)}
+.toast.show{transform:translateY(0);opacity:1}
+.toast.err{background:var(--red)}
+
+/* ── STATUS BADGE ── */
+.sync-bar{height:2px;background:var(--blue);position:fixed;top:0;left:0;z-index:9998;transition:width .3s;width:0}
+
+/* ── PRINT ── */
+@media print{.topbar,.nav,.btn-add,.btn-sm,.modal-overlay,.toast,.chat-sidebar,.chat-toggle-btn{display:none!important}.section{display:block!important}}
+
+/* ── RESPONSIVE NAV ── */
+@media(max-width:600px){.nav-btn span.nav-label{display:none}.nav-btn{padding:8px 9px}}
+
+/* ── EDIT BTN ── */
+.btn-edit{padding:5px 11px;border-radius:var(--r);font-size:11.5px;cursor:pointer;border:1px solid var(--border2);background:var(--bg);color:var(--text2);display:flex;align-items:center;gap:4px;font-weight:500;transition:all .15s;font-family:inherit}
+.btn-edit:hover{background:var(--bg3)}
+
+/* ── CONFIRM DIALOG ── */
+.confirm-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:2000;display:flex;align-items:center;justify-content:center;padding:16px}
+.confirm-box{background:var(--bg);border-radius:var(--r-xl);border:1px solid var(--border2);padding:22px;width:380px;max-width:100%;box-shadow:0 20px 60px rgba(0,0,0,.18)}
+.confirm-box h3{font-size:15px;font-weight:600;margin-bottom:10px}
+.confirm-box p{font-size:13px;color:var(--text2);margin-bottom:18px;line-height:1.5}
+.confirm-btns{display:flex;gap:8px;justify-content:flex-end}
+
+/* ── INFRAESTRUTURA ── */
+.infra-item{background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:13px 15px;margin-bottom:8px;display:flex;align-items:flex-start;gap:11px;box-shadow:var(--shadow)}
+.infra-actions{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+</style>
+</head>
+<body>
+<div class="sync-bar" id="sync-bar"></div>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="topbar-logo">
+    <i class="ti ti-brain"></i>
+    CIS-PE — Gestão
+  </div>
+  <div class="topbar-right">
+    <span class="role-badge" id="role-badge"></span>
+    <div style="position:relative" onclick="toggleChat()" title="Chat com equipe">
+      <div class="chat-toggle-btn">
+        <i class="ti ti-message-2"></i>
+        <div class="chat-dot" id="chat-dot"></div>
+      </div>
+    </div>
+    <select class="role-sel" id="user-role" onchange="setRole(this.value)">
+      <option value="apoio">Apoio</option>
+      <option value="gestao">Gestão</option>
+    </select>
+  </div>
+</div>
+
+<!-- NAV -->
+<div class="nav">
+  <button class="nav-btn active" onclick="showSection('dashboard',this)"><i class="ti ti-layout-dashboard"></i><span class="nav-label">Painel</span></button>
+  <button class="nav-btn" onclick="showSection('demandas',this)"><i class="ti ti-list-check"></i><span class="nav-label">Demandas</span> <span class="nbadge" id="badge-demandas">0</span></button>
+  <button class="nav-btn" onclick="showSection('agenda',this)"><i class="ti ti-calendar"></i><span class="nav-label">Agenda</span></button>
+  <button class="nav-btn" onclick="showSection('reunioes',this)"><i class="ti ti-users"></i><span class="nav-label">Reuniões</span></button>
+  <button class="nav-btn" onclick="showSection('infraestrutura',this)"><i class="ti ti-server"></i><span class="nav-label">Infraestrutura</span></button>
+</div>
+
+<!-- CHAT SIDEBAR -->
+<div class="chat-sidebar" id="chat-sidebar">
+  <div class="chat-header">
+    <div class="chat-header-title"><i class="ti ti-message-2"></i><span id="chat-sidebar-title">Chat CIS-PE</span></div>
+    <button class="chat-close" onclick="toggleChat()"><i class="ti ti-x"></i></button>
+  </div>
+  <div class="chat-role-label">
+    <div class="online-dot"></div>
+    <span id="chat-role-label-txt">Conectado como Apoio · fala com Gestão</span>
+  </div>
+  <div class="chat-messages" id="chat-messages"></div>
+  <div class="chat-input-area">
+    <input class="chat-input" type="text" id="chat-input" placeholder="Mensagem…" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMsg()}">
+    <button class="chat-send" onclick="sendMsg()"><i class="ti ti-send"></i></button>
+  </div>
+</div>
+
+<div class="app-body" id="app-body">
+<div class="content">
+
+<!-- PAINEL -->
+<div class="section active" id="sec-dashboard">
+  <div class="stat-grid" id="stat-row"></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px" id="dash-todo-notes">
+    <!-- TO DO + ANOTAÇÕES ficam aqui via JS -->
+  </div>
+  <div class="dash-grid">
+    <div>
+      <div class="section-sub">Demandas urgentes / vencendo hoje</div>
+      <div id="dash-urgentes"></div>
+    </div>
+    <div>
+      <div class="section-sub">Próximas reuniões</div>
+      <div id="dash-reunioes"></div>
+    </div>
+  </div>
+</div>
+
+<!-- DEMANDAS -->
+<div class="section" id="sec-demandas">
+  <div class="section-header">
+    <span class="section-title">Demandas</span>
+    <button class="btn-add" onclick="openModal('modal-demanda');editingDemandaId=null;document.getElementById('modal-demanda-title').textContent='Nova demanda'"><i class="ti ti-plus"></i>Nova demanda</button>
+  </div>
+  <div class="filters" id="demand-filters"></div>
+  <div class="two-col">
+    <div id="lista-demandas"></div>
+    <div id="detalhe-demanda">
+      <div class="empty-state"><i class="ti ti-click"></i><p>Selecione uma demanda para ver detalhes</p></div>
+    </div>
+  </div>
+</div>
+
+<!-- AGENDA -->
+<div class="section" id="sec-agenda">
+  <div class="section-header">
+    <span class="section-title">Agenda</span>
+    <button class="btn-add" onclick="openModal('modal-evento');editingEventoId=null"><i class="ti ti-plus"></i>Novo evento</button>
+  </div>
+  <div class="agenda-two-col">
+    <div>
+      <div class="agenda-header">
+        <button class="month-nav" onclick="changeMonth(-1)"><i class="ti ti-chevron-left"></i></button>
+        <span class="agenda-month" id="agenda-month-lbl"></span>
+        <button class="month-nav" onclick="changeMonth(1)"><i class="ti ti-chevron-right"></i></button>
+      </div>
+      <div class="cal-wrap"><div class="cal-grid" id="cal-grid"></div></div>
+    </div>
+    <div>
+      <div class="section-sub" id="agenda-day-title">Todos os registros</div>
+      <div id="agenda-events"></div>
+    </div>
+  </div>
+</div>
+
+<!-- REUNIÕES -->
+<div class="section" id="sec-reunioes">
+  <div class="section-header">
+    <span class="section-title">Reuniões</span>
+    <button class="btn-add" onclick="openModal('modal-reuniao');editingReuniaoId=null"><i class="ti ti-plus"></i>Agendar reunião</button>
+  </div>
+  <div class="filters" id="reuniao-filters"></div>
+  <div id="lista-reunioes"></div>
+</div>
+
+<!-- INFRAESTRUTURA -->
+<div class="section" id="sec-infraestrutura">
+  <div class="section-header">
+    <span class="section-title">Infraestrutura / Chamados</span>
+    <button class="btn-add" onclick="openModal('modal-infra');editingInfraId=null"><i class="ti ti-plus"></i>Novo chamado</button>
+  </div>
+  <div id="lista-infra"></div>
+</div>
+
+</div><!-- /content -->
+</div><!-- /app-body -->
+
+<!-- TOAST -->
+<div class="toast" id="toast"><i class="ti ti-check" id="toast-icon"></i><span id="toast-msg"></span></div>
+
+<!-- MODAL DEMANDA -->
+<div class="modal-overlay" id="modal-demanda" style="display:none" onclick="outsideClose(event,'modal-demanda')">
+<div class="modal" onclick="event.stopPropagation()">
+  <div class="modal-title"><span id="modal-demanda-title">Nova demanda</span><button class="modal-close" onclick="closeModal('modal-demanda')"><i class="ti ti-x"></i></button></div>
+  <div class="form-group"><label class="form-label">Título *</label><input class="form-input" id="d-titulo" placeholder="Descreva brevemente a demanda"></div>
+  <div class="form-row">
+    <div class="form-group"><label class="form-label">Tipo / Prioridade</label>
+      <select class="form-select" id="d-tipo">
+        <option value="urgente">🔴 Urgente</option>
+        <option value="alta">🟠 Alta</option>
+        <option value="media" selected>🔵 Média</option>
+        <option value="infraestrutura">🔧 Infraestrutura</option>
+        <option value="outros">⬜ Outros</option>
+      </select>
+    </div>
+    <div class="form-group"><label class="form-label">Status</label>
+      <select class="form-select" id="d-status">
+        <option value="pendente">Pendente</option>
+        <option value="andamento">Em andamento</option>
+      </select>
+    </div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label class="form-label">Origem / Solicitante</label><input class="form-input" id="d-origem" placeholder="Secretaria, GERES, equipe..."></div>
+    <div class="form-group"><label class="form-label">Prazo</label><input class="form-input" id="d-prazo" type="date"></div>
+  </div>
+  <div class="form-group"><label class="form-label">Descrição / Observações</label><textarea class="form-textarea" id="d-desc" placeholder="Detalhes, contexto, documentos relacionados..."></textarea></div>
+  <div class="form-group"><label class="form-label">Responsável interno</label><input class="form-input" id="d-resp" placeholder="Nome ou área responsável"></div>
+  <div class="btn-row">
+    <button class="btn-cancel" onclick="closeModal('modal-demanda')">Cancelar</button>
+    <button class="btn-save" onclick="salvarDemanda()">Salvar demanda</button>
+  </div>
+</div>
+</div>
+
+<!-- MODAL EVENTO -->
+<div class="modal-overlay" id="modal-evento" style="display:none" onclick="outsideClose(event,'modal-evento')">
+<div class="modal" onclick="event.stopPropagation()">
+  <div class="modal-title">Novo evento<button class="modal-close" onclick="closeModal('modal-evento')"><i class="ti ti-x"></i></button></div>
+  <div class="form-group"><label class="form-label">Título *</label><input class="form-input" id="ev-titulo" placeholder="Ex: Reunião CIB, Monitoramento semanal"></div>
+  <div class="form-row">
+    <div class="form-group"><label class="form-label">Data *</label><input class="form-input" id="ev-data" type="date"></div>
+    <div class="form-group"><label class="form-label">Horário</label><input class="form-input" id="ev-hora" type="time"></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label class="form-label">Tipo</label>
+      <select class="form-select" id="ev-tipo">
+        <option value="interno_ses">Interno SES-PE</option>
+        <option value="externo">Externo</option>
+        <option value="formacao">Formação/Capacitação</option>
+        <option value="congresso">Congresso/Fórum</option>
+        <option value="outro">Outros</option>
+      </select>
+    </div>
+    <div class="form-group"><label class="form-label">Local / link</label><input class="form-input" id="ev-local" placeholder="Sala, Teams, Meet..."></div>
+  </div>
+  <div class="form-group"><label class="form-label">Participantes / observações</label><textarea class="form-textarea" id="ev-obs" placeholder="Quem participa, pauta preliminar..."></textarea></div>
+  <div class="btn-row">
+    <button class="btn-cancel" onclick="closeModal('modal-evento')">Cancelar</button>
+    <button class="btn-save" onclick="salvarEvento()">Salvar evento</button>
+  </div>
+</div>
+</div>
+
+<!-- MODAL REUNIÃO -->
+<div class="modal-overlay" id="modal-reuniao" style="display:none" onclick="outsideClose(event,'modal-reuniao')">
+<div class="modal" onclick="event.stopPropagation()">
+  <div class="modal-title">Agendar reunião<button class="modal-close" onclick="closeModal('modal-reuniao')"><i class="ti ti-x"></i></button></div>
+  <div class="form-group"><label class="form-label">Título / pauta *</label><input class="form-input" id="r-titulo" placeholder="Ex: Alinhamento Vigilância + CIS-PE"></div>
+  <div class="form-row">
+    <div class="form-group"><label class="form-label">Data *</label><input class="form-input" id="r-data" type="date"></div>
+    <div class="form-group"><label class="form-label">Horário</label><input class="form-input" id="r-hora" type="time"></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label class="form-label">Nível</label>
+      <select class="form-select" id="r-nivel">
+        <option value="interno">Equipe CIS-PE</option>
+        <option value="ses">Secretarias Executivas</option>
+        <option value="geres">GERES / municípios</option>
+        <option value="nacional">Nacional / Ministério</option>
+        <option value="intersetorial">Intersetorial</option>
+        <option value="gabinete">Gabinete</option>
+      </select>
+    </div>
+    <div class="form-group"><label class="form-label">Modalidade</label>
+      <select class="form-select" id="r-mod">
+        <option value="presencial">Presencial</option>
+        <option value="remota">Remota</option>
+        <option value="hibrida">Híbrida</option>
+      </select>
+    </div>
+  </div>
+  <div class="form-group"><label class="form-label">Participantes</label><input class="form-input" id="r-part" placeholder="Nomes, cargos ou setores"></div>
+  <div class="form-group"><label class="form-label">Local / link</label><input class="form-input" id="r-local" placeholder="Sala CIS-PE, Teams, Meet..."></div>
+  <div class="form-group"><label class="form-label">Pauta / observações</label><textarea class="form-textarea" id="r-obs" placeholder="Tópicos a tratar..."></textarea></div>
+  <div class="btn-row">
+    <button class="btn-cancel" onclick="closeModal('modal-reuniao')">Cancelar</button>
+    <button class="btn-save" onclick="salvarReuniao()">Agendar reunião</button>
+  </div>
+</div>
+</div>
+
+<!-- MODAL INFRAESTRUTURA -->
+<div class="modal-overlay" id="modal-infra" style="display:none" onclick="outsideClose(event,'modal-infra')">
+<div class="modal" onclick="event.stopPropagation()">
+  <div class="modal-title">Chamado de infraestrutura<button class="modal-close" onclick="closeModal('modal-infra')"><i class="ti ti-x"></i></button></div>
+  <div class="form-group"><label class="form-label">Descrição do problema *</label><input class="form-input" id="est-titulo" placeholder="Ex: Videowall sala 2 sem sinal"></div>
+  <div class="form-row">
+    <div class="form-group"><label class="form-label">Categoria</label>
+      <select class="form-select" id="est-cat">
+        <option value="servidor">Servidores / TI</option>
+        <option value="videowall">Videowall / telas</option>
+        <option value="rede">Rede / conectividade</option>
+        <option value="estacao">Estações de trabalho</option>
+        <option value="sala">Sala / climatização / elétrica</option>
+        <option value="software">Software / acesso</option>
+        <option value="outro">Outro</option>
+      </select>
+    </div>
+    <div class="form-group"><label class="form-label">Urgência</label>
+      <select class="form-select" id="est-urg">
+        <option value="urgente">🔴 Urgente — impede operação</option>
+        <option value="alta">🟠 Alta — afeta produção</option>
+        <option value="media" selected>🔵 Média — incômodo</option>
+        <option value="baixa">⬜ Baixa — melhoria</option>
+      </select>
+    </div>
+  </div>
+  <div class="form-group"><label class="form-label">Detalhes / local exato</label><textarea class="form-textarea" id="est-desc" placeholder="Rack 01, sala de coordenação, etc."></textarea></div>
+  <div class="btn-row">
+    <button class="btn-cancel" onclick="closeModal('modal-infra')">Cancelar</button>
+    <button class="btn-save" onclick="salvarInfra()">Registrar chamado</button>
+  </div>
+</div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════
+// FIREBASE CONFIG — Realtime Database público
+// ══════════════════════════════════════════════════
+const firebaseConfig = {
+  apiKey: "AIzaSyDbbP1TXij9iqcbgWhQyN8qMHv6aWx-AdA",
+  authDomain: "gestao-cispe-9de69.firebaseapp.com",
+  databaseURL: "https://gestao-cispe-9de69-default-rtdb.firebaseio.com",
+  projectId: "gestao-cispe-9de69",
+  storageBucket: "gestao-cispe-9de69.firebasestorage.app",
+  messagingSenderId: "542101900216",
+  appId: "1:542101900216:web:35ff6e5a2e729856c51d4d"
+};
+
+let useFirebase = false;
+let db = null;
+
+function initFirebase() {
+  try {
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    db = firebase.database();
+    db.ref('.info/connected').on('value', snap => {
+      if (snap.val() === true) {
+        if (!useFirebase) { useFirebase = true; toast('✓ Sincronizado em tempo real'); }
+      } else { useFirebase = false; }
+    });
+    subscribeFirebase();
+  } catch(e) {
+    console.warn('Firebase indisponível, usando armazenamento local.', e);
+    useFirebase = false;
+  }
+}
+
+function subscribeFirebase() {
+  if (!db) return;
+  db.ref('cispe').on('value', snap => {
+    const remote = snap.val();
+    if (remote) {
+      state = { ...defaultShape(), ...remote };
+      ['demandas','eventos','reunioes','infraestrutura','msgs_apoio','msgs_gestao',
+       'todo_apoio','todo_gestao'].forEach(k => {
+        if (!Array.isArray(state[k])) state[k] = state[k] ? Object.values(state[k]) : [];
+      });
+      renderAll();
+      renderChatMsgs();
+      checkUnread();
+    }
+  });
+}
+
+function pushState() {
+  if (useFirebase && db) {
+    setSyncBar(true);
+    db.ref('cispe').set(state)
+      .then(() => setSyncBar(false))
+      .catch(() => setSyncBar(false));
+  } else {
+    try { localStorage.setItem('cispe-v4', JSON.stringify(state)); } catch(e) {}
+  }
+}
+
+function setSyncBar(loading) {
+  const el = document.getElementById('sync-bar');
+  el.style.width = loading ? '70%' : '100%';
+  if (!loading) setTimeout(() => { el.style.width = '0'; }, 400);
+}
+
+// ══════════════════════════════════════════════════
+// ESTADO
+// ══════════════════════════════════════════════════
+const hoje = new Date();
+const todayStr = hoje.toISOString().split('T')[0];
+let currentRole = 'apoio';
+let agendaMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+let selectedDay = null;
+let selectedDemanda = null;
+let activeFilter = 'todos';
+let reuniaoFilter = 'todos';
+let dashFilter = null;
+let editingDemandaId = null;
+let editingEventoId = null;
+let editingReuniaoId = null;
+let editingInfraId = null;
+let chatOpen = false;
+let notesTimer = null;
+
+function defaultShape() {
+  return {
+    demandas:[], eventos:[], reunioes:[], infraestrutura:[],
+    msgs_apoio:[], msgs_gestao:[],
+    todo_apoio:[], todo_gestao:[],
+    notes_apoio:'', notes_gestao:''
+  };
+}
+
+function loadState() {
+  try {
+    const s = localStorage.getItem('cispe-v4');
+    if (s) return { ...defaultShape(), ...JSON.parse(s) };
+  } catch(e) {}
+  return {
+    ...defaultShape(),
+    demandas: [
+      {id:uid(),titulo:'Solicitação de painel de leitos UTI',tipo:'urgente',origem:'Secretaria Executiva de Atenção à Saúde',prazo:'2026-06-05',desc:'Atualização diária consolidando UTI adulto, pediátrica e neonatal por regional.',resp:'Equipe analítica CIS-PE',status:'andamento',created:todayStr},
+      {id:uid(),titulo:'Alinhamento com CGAII/MS — SUS Digital',tipo:'alta',origem:'Coordenação-Geral de Apoio à Inteligência',prazo:'2026-06-10',desc:'Alinhamento sobre integração com RNDS e SUS Digital.',resp:'Gerência CIS-PE',status:'pendente',created:todayStr},
+      {id:uid(),titulo:'Videowall sala de monitoramento sem sinal',tipo:'infraestrutura',origem:'Equipe CIS-PE',prazo:todayStr,desc:'Painel 3 do videowall principal sem sinal.',resp:'TI / Infraestrutura',status:'pendente',created:todayStr},
+      {id:uid(),titulo:'Capacitação equipe — BigDataPE',tipo:'media',origem:'Equipe analítica',prazo:'2026-06-15',desc:'Capacitação interna sobre integração de bases via Plataforma BigDataPE.',resp:'Gerência CIS-PE',status:'pendente',created:todayStr},
+      {id:uid(),titulo:'Nota técnica situacional — Dengue por GERES',tipo:'alta',origem:'DGVSAP',prazo:'2026-06-06',desc:'Nota técnica com dados das 12 GERES sobre casos de dengue.',resp:'Epidemiologia / CIS-PE',status:'andamento',created:todayStr},
+    ],
+    eventos: [
+      {id:uid(),titulo:'Reunião CIB — pauta SUS Digital PE',data:'2026-06-05',hora:'14:00',tipo:'interno_ses',local:'Sala de Reunião CIS-PE',obs:'Participação do Ministério da Saúde'},
+      {id:uid(),titulo:'Monitoramento semanal equipe CIS',data:'2026-06-04',hora:'08:30',tipo:'interno_ses',local:'Sala CIS-PE',obs:'Revisão de painéis e demandas da semana'},
+      {id:uid(),titulo:'Formação BigDataPE',data:'2026-06-15',hora:'09:00',tipo:'formacao',local:'ATI — auditório',obs:''},
+    ],
+    reunioes: [
+      {id:uid(),titulo:'Alinhamento SEVSAP + CIS-PE',data:'2026-06-04',hora:'09:00',nivel:'ses',mod:'presencial',part:'Secretária Executiva, equipe SEVSAP',local:'Sala CIS-PE',obs:'Prioridades de junho'},
+      {id:uid(),titulo:'Videoconferência CGAII — RNDS',data:'2026-06-10',hora:'14:30',nivel:'nacional',mod:'remota',part:'CGAII/MS, Gerência CIS-PE',local:'Google Meet',obs:'Integração progressiva com RNDS'},
+      {id:uid(),titulo:'Alinhamento equipe analítica CIS',data:'2026-06-03',hora:'08:00',nivel:'interno',mod:'presencial',part:'Toda equipe CIS-PE',local:'Sala CIS-PE',obs:''},
+    ],
+    infraestrutura: [
+      {id:uid(),titulo:'Videowall painel 3 sem sinal',cat:'videowall',urg:'urgente',desc:'Sala principal — painel 3 de 5',status:'aberto',created:todayStr},
+      {id:uid(),titulo:'Acesso VPN expirado — analista',cat:'rede',urg:'alta',desc:'Certificado VPN venceu',status:'andamento',created:todayStr},
+    ],
+    msgs_apoio:[], msgs_gestao:[],
+    todo_apoio:[], todo_gestao:[],
+    notes_apoio:'', notes_gestao:''
+  };
+}
+
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+
+let state = loadState();
+
+// ══════════════════════════════════════════════════
+// UTILITÁRIOS
+// ══════════════════════════════════════════════════
+function fmt(ds) { return ds ? ds.split('-').reverse().join('/') : '—'; }
+function gv(id) { const el=document.getElementById(id); return el ? el.value.trim() : ''; }
+function sv(id) { const el=document.getElementById(id); return el ? el.value : ''; }
+function cv(id) { const el=document.getElementById(id); if(el) el.value=''; }
+function setv(id,v) { const el=document.getElementById(id); if(el) el.value = v||''; }
+function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function fmtTs(ts) {
+  if(!ts) return '';
+  const d=new Date(ts);
+  return d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'2-digit'})
+    +' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+}
+
+let toastT;
+function toast(msg, err=false) {
+  const el=document.getElementById('toast');
+  document.getElementById('toast-msg').textContent=msg;
+  document.getElementById('toast-icon').className = err ? 'ti ti-alert-circle' : 'ti ti-check';
+  el.className = 'toast show' + (err?' err':'');
+  clearTimeout(toastT);
+  toastT = setTimeout(()=>el.className='toast',3000);
+}
+
+function openModal(id) { document.getElementById(id).style.display='flex'; setTimeout(()=>{const f=document.querySelector(`#${id} .form-input`);if(f)f.focus();},50); }
+function closeModal(id) { document.getElementById(id).style.display='none'; }
+function outsideClose(e,id) { if(e.target.id===id) closeModal(id); }
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') document.querySelectorAll('.modal-overlay').forEach(m=>m.style.display='none'); });
+
+// ══════════════════════════════════════════════════
+// ROLE
+// ══════════════════════════════════════════════════
+function setRole(r) {
+  currentRole = r;
+  const badge = document.getElementById('role-badge');
+  badge.textContent = r === 'apoio' ? 'Apoio' : 'Gestão';
+  badge.className = 'role-badge ' + (r === 'apoio' ? 'rb-apoio' : 'rb-gestao');
+  document.getElementById('chat-role-label-txt').textContent =
+    r === 'apoio' ? 'Conectado como Apoio · fala com Gestão' : 'Conectado como Gestão · fala com Apoio';
+  renderAll();
+  renderChatMsgs();
+  checkUnread();
+}
+
+// ══════════════════════════════════════════════════
+// NAVEGAÇÃO
+// ══════════════════════════════════════════════════
+function showSection(id, btn) {
+  dashFilter = null;
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('sec-'+id).classList.add('active');
+  if(btn) btn.classList.add('active');
+  if(id==='demandas') renderDemandas();
+  if(id==='agenda') renderCalendario();
+  if(id==='reunioes') renderReunioes();
+  if(id==='infraestrutura') renderInfra();
+  if(id==='dashboard') renderDashboard();
+}
+
+function showSectionFiltered(id, filter) {
+  dashFilter = filter;
+  activeFilter = filter;
+  const navBtns = document.querySelectorAll('.nav-btn');
+  const sections = ['dashboard','demandas','agenda','reunioes','infraestrutura'];
+  const idx = sections.indexOf(id);
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  navBtns.forEach(b=>b.classList.remove('active'));
+  document.getElementById('sec-'+id).classList.add('active');
+  if(navBtns[idx]) navBtns[idx].classList.add('active');
+  renderDemandas();
+}
+
+function renderAll() { renderDashboard(); updateBadge(); }
+
+function updateBadge() {
+  const n = state.demandas.filter(d=>d.status!=='concluido').length;
+  document.getElementById('badge-demandas').textContent = n;
+}
+
+// ══════════════════════════════════════════════════
+// TIPO METADATA
+// ══════════════════════════════════════════════════
+const tipoIcons = {urgente:'ti-alert-circle',alta:'ti-arrow-up-circle',media:'ti-circle',infraestrutura:'ti-server',outros:'ti-file'};
+const tipoColors = {urgente:'tc-urgente',alta:'tc-alta',media:'tc-media',infraestrutura:'tc-infraestrutura',outros:'tc-outros'};
+const tipoLabels = {urgente:'Urgente',alta:'Alta',media:'Média',infraestrutura:'Infraestrutura',outros:'Outros'};
+const modLabels = {presencial:'Presencial',remota:'Remota',hibrida:'Híbrida'};
+const nivelLabels = {interno:'Equipe',ses:'Secretarias',geres:'GERES',nacional:'Nacional',intersetorial:'Intersetorial',gabinete:'Gabinete'};
+const nivelBorderColor = {interno:'#1660B8',ses:'#0C6E52',geres:'#3A6A10',nacional:'#993556',intersetorial:'#B8720F',gabinete:'#5040B8'};
+const tipoEvColors = {interno_ses:'#1660B8',externo:'#993556',formacao:'#B8720F',congresso:'#5040B8',outro:'#5C5B55'};
+const tipoEvLabels = {'interno_ses':'Interno SES-PE','externo':'Externo','formacao':'Formação/Capacitação','congresso':'Congresso/Fórum','outro':'Outros'};
+const catLabel = {servidor:'Servidores/TI',videowall:'Videowall/Telas',rede:'Rede/Conectividade',estacao:'Estações',sala:'Sala/Elétrica',software:'Software',outro:'Outro'};
+
+// ══════════════════════════════════════════════════
+// DASHBOARD
+// ══════════════════════════════════════════════════
+function renderDashboard() {
+  const urgentes = state.demandas.filter(d=>d.tipo==='urgente'&&d.status!=='concluido').length;
+  const andamento = state.demandas.filter(d=>d.status==='andamento').length;
+  const pendentes = state.demandas.filter(d=>d.status==='pendente').length;
+  const totalDem = state.demandas.filter(d=>d.status!=='concluido').length;
+  const proxEventos = state.eventos.filter(e=>e.data>=todayStr).length;
+  const proxReunioes = state.reunioes.filter(r=>r.data>=todayStr).length;
+  const chamadosAbertos = state.infraestrutura.filter(e=>e.status!=='concluido').length;
+
+  document.getElementById('stat-row').innerHTML = `
+    <div class="stat-card sc-red" onclick="showSectionFiltered('demandas','urgente')" title="Ver urgentes">
+      <div class="stat-num" style="color:var(--red)">${urgentes}</div>
+      <div class="stat-lbl">Urgentes</div>
+      <i class="ti ti-arrow-right stat-arrow"></i>
+    </div>
+    <div class="stat-card sc-teal" onclick="showSectionFiltered('demandas','andamento')" title="Ver em andamento">
+      <div class="stat-num" style="color:var(--teal)">${andamento}</div>
+      <div class="stat-lbl">Em andamento</div>
+      <i class="ti ti-arrow-right stat-arrow"></i>
+    </div>
+    <div class="stat-card sc-blue" onclick="showSectionFiltered('demandas','todos')" title="Ver todas">
+      <div class="stat-num" style="color:var(--blue)">${totalDem}</div>
+      <div class="stat-lbl">Demandas abertas</div>
+      <i class="ti ti-arrow-right stat-arrow"></i>
+    </div>
+    <div class="stat-card sc-amber" onclick="showSection('agenda',document.querySelectorAll('.nav-btn')[2])" title="Ver agenda">
+      <div class="stat-num" style="color:var(--amber)">${proxEventos + proxReunioes}</div>
+      <div class="stat-lbl">Eventos/Reuniões</div>
+      <i class="ti ti-arrow-right stat-arrow"></i>
+    </div>
+    <div class="stat-card sc-purple" onclick="showSection('infraestrutura',document.querySelectorAll('.nav-btn')[4])" title="Ver chamados">
+      <div class="stat-num" style="color:var(--purple)">${chamadosAbertos}</div>
+      <div class="stat-lbl">Chamados abertos</div>
+      <i class="ti ti-arrow-right stat-arrow"></i>
+    </div>
+  `;
+
+  // TO DO + ANOTAÇÕES
+  renderTodoPanel();
+  renderNotesPanel();
+
+  const urgDem = state.demandas.filter(d=>(d.tipo==='urgente'||d.prazo<=todayStr)&&d.status!=='concluido').slice(0,5);
+  document.getElementById('dash-urgentes').innerHTML = urgDem.length
+    ? urgDem.map(d=>demandaCard(d,false)).join('')
+    : '<div class="empty-state"><i class="ti ti-circle-check"></i><p>Nenhuma urgência no momento</p></div>';
+
+  const proxReu = state.reunioes.filter(r=>r.data>=todayStr).sort((a,b)=>a.data.localeCompare(b.data)).slice(0,5);
+  document.getElementById('dash-reunioes').innerHTML = proxReu.length
+    ? proxReu.map(r=>`<div class="event-item" style="border-left-color:${nivelBorderColor[r.nivel]||'var(--blue)'}">
+        <div class="ev-title">${escHtml(r.titulo)}</div>
+        <div class="ev-meta"><span><i class="ti ti-calendar"></i>${fmt(r.data)}</span><span><i class="ti ti-clock"></i>${r.hora||'—'}</span><span>${modLabels[r.mod]||''}</span><span class="pill" style="background:var(--gray-lt);color:var(--gray);font-size:10px">${nivelLabels[r.nivel]||r.nivel}</span></div>
+      </div>`).join('')
+    : '<div class="empty-state"><i class="ti ti-calendar-off"></i><p>Sem reuniões próximas</p></div>';
+}
+
+// ══════════════════════════════════════════════════
+// TO DO
+// ══════════════════════════════════════════════════
+function getTodoKey() { return currentRole==='apoio' ? 'todo_apoio' : 'todo_gestao'; }
+
+function renderTodoPanel() {
+  const k = getTodoKey();
+  if(!state[k]) state[k]=[];
+  const todos = state[k];
+  const pending = todos.filter(t=>!t.done).length;
+  const container = document.getElementById('dash-todo-notes');
+  if(!container) return;
+
+  let html = `<div class="todo-wrap">
+    <div class="todo-header">
+      <div class="todo-title"><i class="ti ti-checkbox"></i> To-Do <span style="font-size:11px;color:var(--text3);font-weight:400">(${pending} pendente${pending!==1?'s':''})</span></div>
+    </div>
+    <div class="todo-add-row">
+      <input type="text" id="todo-input" placeholder="Adicionar tarefa…" onkeydown="if(event.key==='Enter')addTodo()">
+      <button class="todo-add-btn" onclick="addTodo()"><i class="ti ti-plus"></i></button>
+    </div>
+    <div id="todo-list">`;
+  if(!todos.length) {
+    html += '<div class="todo-empty">Nenhuma tarefa ainda.</div>';
+  } else {
+    todos.forEach(t => {
+      html += `<div class="todo-item">
+        <input type="checkbox" ${t.done?'checked':''} onchange="toggleTodo('${t.id}')">
+        <span class="todo-item-text${t.done?' done':''}">${escHtml(t.text)}</span>
+        <button class="todo-del" onclick="removeTodo('${t.id}')"><i class="ti ti-x"></i></button>
+      </div>`;
+    });
+  }
+  html += `</div></div>`;
+
+  // ANOTAÇÕES
+  const notesKey = currentRole==='apoio' ? 'notes_apoio' : 'notes_gestao';
+  html += `<div class="notes-panel">
+    <div class="notes-title"><i class="ti ti-notes"></i> Anotações <span style="font-size:11px;font-weight:400;color:var(--text3)">(${currentRole==='apoio'?'Apoio':'Gestão'})</span></div>
+    <textarea id="notes-textarea" placeholder="Suas anotações particulares…" oninput="onNotesInput()">${escHtml(state[notesKey]||'')}</textarea>
+    <div class="notes-status" id="notes-status"></div>
+  </div>`;
+
+  container.innerHTML = html;
+}
+
+function addTodo() {
+  const inp = document.getElementById('todo-input');
+  const text = inp ? inp.value.trim() : '';
+  if(!text) return;
+  const k = getTodoKey();
+  if(!state[k]) state[k]=[];
+  state[k].push({id:uid(), text, done:false, created:Date.now()});
+  inp.value='';
+  pushState();
+  renderDashboard();
+}
+
+function toggleTodo(id) {
+  const k = getTodoKey();
+  const t = (state[k]||[]).find(x=>x.id===id);
+  if(t) { t.done=!t.done; pushState(); renderDashboard(); }
+}
+
+function removeTodo(id) {
+  const k = getTodoKey();
+  state[k] = (state[k]||[]).filter(x=>x.id!==id);
+  pushState();
+  renderDashboard();
+}
+
+// ══════════════════════════════════════════════════
+// ANOTAÇÕES
+// ══════════════════════════════════════════════════
+function onNotesInput() {
+  clearTimeout(notesTimer);
+  const el = document.getElementById('notes-status');
+  if(el) el.textContent = 'Salvando…';
+  notesTimer = setTimeout(() => {
+    const key = currentRole==='apoio' ? 'notes_apoio' : 'notes_gestao';
+    const ta = document.getElementById('notes-textarea');
+    if(ta) {
+      state[key] = ta.value;
+      pushState();
+      const s = document.getElementById('notes-status');
+      if(s) { s.textContent = 'Salvo ✓'; setTimeout(()=>{if(s)s.textContent='';},2000); }
+    }
+  }, 800);
+}
+
+// ══════════════════════════════════════════════════
+// DEMANDAS
+// ══════════════════════════════════════════════════
+function demandaCard(d, clickable=true) {
+  const sel = selectedDemanda===d.id ? ' selected' : '';
+  return `<div class="demand-item${sel}" onclick="${clickable!==false?`showDetalhe('${d.id}')`:''}" >
+    <div class="d-icon ${tipoColors[d.tipo]||'tc-outros'}"><i class="ti ${tipoIcons[d.tipo]||'ti-clipboard'}"></i></div>
+    <div class="d-info">
+      <div class="d-title">${escHtml(d.titulo)}</div>
+      <div class="d-meta">
+        <span><i class="ti ti-user" style="font-size:12px;margin-right:2px"></i>${escHtml(d.origem||'—')}</span>
+        <span><i class="ti ti-calendar" style="font-size:12px;margin-right:2px"></i>${d.prazo?fmt(d.prazo):'Sem prazo'}</span>
+      </div>
+    </div>
+    <div class="d-right">
+      <span class="pill ${tipoColors[d.tipo]||'tc-outros'}">${tipoLabels[d.tipo]||d.tipo}</span>
+      <span class="pill p-${d.status}">${d.status}</span>
+    </div>
+  </div>`;
+}
+
+function renderDemandas() {
+  const fltrs = ['todos','urgente','alta','media','infraestrutura','outros'];
+  const fLabels = {todos:'Todos',urgente:'🔴 Urgente',alta:'🟠 Alta',media:'🔵 Média',infraestrutura:'🔧 Infraestrutura',outros:'⬜ Outros'};
+  const statusFltrs = ['pendente','andamento','concluido'];
+  const sfLabels = {pendente:'Pendente',andamento:'Em andamento',concluido:'Concluído'};
+
+  document.getElementById('demand-filters').innerHTML =
+    fltrs.map(f=>`<button class="filter-btn${activeFilter===f?' active':''}" onclick="setFilter('${f}')">${fLabels[f]}</button>`).join('') +
+    '<span style="width:1px;background:var(--border2);margin:0 4px;display:inline-block;height:22px;vertical-align:middle"></span>' +
+    statusFltrs.map(f=>`<button class="filter-btn${activeFilter===f?' active':''}" onclick="setFilter('${f}')">${sfLabels[f]}</button>`).join('');
+
+  let list = [...state.demandas];
+  if(activeFilter==='todos') { list=list.filter(d=>d.status!=='concluido'); }
+  else if(['pendente','andamento','concluido'].includes(activeFilter)) { list=list.filter(d=>d.status===activeFilter); }
+  else { list=list.filter(d=>d.tipo===activeFilter&&d.status!=='concluido'); }
+
+  document.getElementById('lista-demandas').innerHTML = list.length
+    ? list.map(d=>demandaCard(d)).join('')
+    : '<div class="empty-state"><i class="ti ti-mood-happy"></i><p>Nenhuma demanda neste filtro</p></div>';
+}
+
+function setFilter(f) { activeFilter=f; renderDemandas(); }
+
+function showDetalhe(id) {
+  selectedDemanda=id;
+  const d = state.demandas.find(x=>x.id===id);
+  if(!d) return;
+  renderDemandas();
+  const canAct = currentRole==='gestao'||currentRole==='apoio';
+  document.getElementById('detalhe-demanda').innerHTML = `
+    <div class="detail-panel">
+      <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
+        <span class="pill ${tipoColors[d.tipo]||'tc-outros'}">${tipoLabels[d.tipo]||d.tipo}</span>
+        <span class="pill p-${d.status}">${d.status}</span>
+      </div>
+      <div class="dp-title">${escHtml(d.titulo)}</div>
+      ${d.desc?`<div class="dp-desc">${escHtml(d.desc)}</div>`:''}
+      <div class="dp-row"><span class="dp-lbl">Origem</span><span class="dp-val">${escHtml(d.origem||'—')}</span></div>
+      <div class="dp-row"><span class="dp-lbl">Prazo</span><span class="dp-val">${fmt(d.prazo)}</span></div>
+      <div class="dp-row"><span class="dp-lbl">Responsável</span><span class="dp-val">${escHtml(d.resp||'—')}</span></div>
+      <div class="dp-row"><span class="dp-lbl">Registrado</span><span class="dp-val">${fmt(d.created)}</span></div>
+      ${canAct?`<div class="action-row">
+        ${d.status!=='andamento'?`<button class="btn-sm" onclick="setStatus('${d.id}','andamento')"><i class="ti ti-player-play"></i>Em andamento</button>`:''}
+        ${d.status!=='concluido'?`<button class="btn-sm success" onclick="setStatus('${d.id}','concluido')"><i class="ti ti-check"></i>Concluir</button>`:''}
+        <button class="btn-edit" onclick="editDemanda('${d.id}')"><i class="ti ti-pencil"></i>Editar</button>
+        <button class="btn-sm danger" onclick="confirmarRemocao('${d.id}','demanda')"><i class="ti ti-trash"></i></button>
+      </div>`:''}
+    </div>`;
+}
+
+function editDemanda(id) {
+  const d = state.demandas.find(x=>x.id===id);
+  if(!d) return;
+  editingDemandaId = id;
+  document.getElementById('modal-demanda-title').textContent = 'Editar demanda';
+  setv('d-titulo',d.titulo); setv('d-tipo',d.tipo); setv('d-status',d.status);
+  setv('d-origem',d.origem); setv('d-prazo',d.prazo);
+  setv('d-desc',d.desc); setv('d-resp',d.resp);
+  openModal('modal-demanda');
+}
+
+function salvarDemanda() {
+  const titulo = gv('d-titulo');
+  if(!titulo) { toast('Informe o título da demanda.',true); return; }
+  const obj = {titulo,tipo:sv('d-tipo'),status:sv('d-status'),origem:gv('d-origem'),prazo:sv('d-prazo'),desc:gv('d-desc'),resp:gv('d-resp')};
+  if(editingDemandaId) {
+    const idx = state.demandas.findIndex(x=>x.id===editingDemandaId);
+    if(idx>-1) { state.demandas[idx]={...state.demandas[idx],...obj}; toast('Demanda atualizada!'); }
+  } else {
+    obj.id = uid(); obj.created = todayStr;
+    state.demandas.unshift(obj);
+    toast('Demanda registrada!');
+  }
+  ['d-titulo','d-origem','d-prazo','d-desc','d-resp'].forEach(cv);
+  editingDemandaId=null;
+  closeModal('modal-demanda'); pushState(); renderDemandas(); updateBadge(); renderDashboard();
+}
+
+function setStatus(id, status) {
+  const d = state.demandas.find(x=>x.id===id);
+  if(d) { d.status=status; pushState(); renderDemandas(); showDetalhe(id); updateBadge(); renderDashboard(); toast('Status atualizado!'); }
+}
+
+function removerDemanda(id) {
+  state.demandas = state.demandas.filter(x=>x.id!==id);
+  selectedDemanda=null;
+  document.getElementById('detalhe-demanda').innerHTML='<div class="empty-state"><i class="ti ti-click"></i><p>Selecione uma demanda</p></div>';
+  pushState(); renderDemandas(); updateBadge(); renderDashboard(); toast('Demanda removida.');
+}
+
+// ══════════════════════════════════════════════════
+// CONFIRMAÇÃO DE REMOÇÃO
+// ══════════════════════════════════════════════════
+function confirmarRemocao(id, tipo) {
+  const labels = {demanda:'esta demanda',evento:'este evento',reuniao:'esta reunião',infra:'este chamado'};
+  const div = document.createElement('div');
+  div.className = 'confirm-overlay';
+  div.innerHTML = `<div class="confirm-box">
+    <h3>Remover registro</h3>
+    <p>Tem certeza que deseja remover ${labels[tipo]||'este item'}? Esta ação não pode ser desfeita.</p>
+    <div class="confirm-btns">
+      <button class="btn-cancel" onclick="this.closest('.confirm-overlay').remove()">Cancelar</button>
+      <button class="btn-sm danger" onclick="execRemover('${id}','${tipo}');this.closest('.confirm-overlay').remove()"><i class="ti ti-trash"></i>Remover</button>
+    </div>
+  </div>`;
+  document.body.appendChild(div);
+}
+
+function execRemover(id, tipo) {
+  if(tipo==='demanda') removerDemanda(id);
+  else if(tipo==='evento') { state.eventos=state.eventos.filter(x=>x.id!==id); pushState(); renderCalendario(); toast('Evento removido.'); }
+  else if(tipo==='reuniao') {
+    // remove também o evento de agenda gerado
+    state.reunioes=state.reunioes.filter(x=>x.id!==id);
+    state.eventos=state.eventos.filter(x=>x._reuniaoId!==id);
+    pushState(); renderReunioes(); renderDashboard(); toast('Reunião removida.');
+  }
+  else if(tipo==='infra') { state.infraestrutura=state.infraestrutura.filter(x=>x.id!==id); pushState(); renderInfra(); toast('Chamado removido.'); }
+}
+
+// ══════════════════════════════════════════════════
+// CALENDÁRIO / AGENDA — inclui reuniões + demandas
+// ══════════════════════════════════════════════════
+function getAllAgendaItems() {
+  const items = [];
+  // Eventos
+  state.eventos.forEach(e => items.push({...e, _srcType:'evento'}));
+  // Reuniões (se não já criou um evento-ponte)
+  state.reunioes.forEach(r => {
+    if(!state.eventos.find(ev=>ev._reuniaoId===r.id)) {
+      items.push({
+        id: r.id, titulo: r.titulo, data: r.data, hora: r.hora||'',
+        local: r.local||'', obs: r.obs||'',
+        tipo: 'reuniao_auto', _srcType:'reuniao', _reuniaoId: r.id,
+        nivel: r.nivel, mod: r.mod
+      });
+    } else {
+      // já tem evento ponte, mostra a versão do evento
+    }
+  });
+  // Demandas com prazo
+  state.demandas.filter(d=>d.prazo&&d.status!=='concluido').forEach(d => {
+    items.push({
+      id: d.id, titulo: d.titulo, data: d.prazo, hora:'',
+      local:'', obs: d.origem||'',
+      tipo:'demanda_prazo', _srcType:'demanda'
+    });
+  });
+  return items;
+}
+
+function renderCalendario() {
+  const y=agendaMes.getFullYear(), m=agendaMes.getMonth();
+  const meses=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  document.getElementById('agenda-month-lbl').textContent=`${meses[m]} ${y}`;
+  const dias=['D','S','T','Q','Q','S','S'];
+  const firstDay=new Date(y,m,1).getDay();
+  const daysInMonth=new Date(y,m+1,0).getDate();
+  const allItems = getAllAgendaItems();
+  const prefix=`${y}-${String(m+1).padStart(2,'0')}`;
+  const eventDays=new Set(allItems.filter(e=>e.data&&e.data.startsWith(prefix)).map(e=>parseInt(e.data.split('-')[2])));
+  let html=dias.map(d=>`<div class="cal-day-hdr">${d}</div>`).join('');
+  for(let i=0;i<firstDay;i++) html+=`<div class="cal-day other-month"></div>`;
+  for(let d=1;d<=daysInMonth;d++) {
+    const ds=`${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const isToday=ds===todayStr,isSel=ds===selectedDay,hasEv=eventDays.has(d);
+    html+=`<div class="cal-day${isToday?' today':''}${isSel?' selected-day':''}${hasEv?' has-event':''}" onclick="filterAgendaDay('${ds}')">${d}</div>`;
+  }
+  document.getElementById('cal-grid').innerHTML=html;
+  renderAgendaEvents(selectedDay);
+}
+
+function changeMonth(dir) { agendaMes=new Date(agendaMes.getFullYear(),agendaMes.getMonth()+dir,1); renderCalendario(); }
+
+function filterAgendaDay(ds) {
+  selectedDay=ds===selectedDay?null:ds;
+  document.getElementById('agenda-day-title').textContent=selectedDay?`Registros — ${fmt(selectedDay)}`:'Todos os registros';
+  renderCalendario();
+}
+
+function renderAgendaEvents(day) {
+  const canAct = true;
+  const allItems = getAllAgendaItems();
+  const list = day ? allItems.filter(e=>e.data===day)
+    : [...allItems].sort((a,b)=>a.data.localeCompare(b.data));
+
+  if(!list.length){
+    document.getElementById('agenda-events').innerHTML='<div class="empty-state"><i class="ti ti-calendar-off"></i><p>Nenhum registro</p></div>';
+    return;
+  }
+
+  document.getElementById('agenda-events').innerHTML=list.map(e=>{
+    let borderColor='#1660B8', tagHtml='', actBtns='';
+    if(e._srcType==='evento'){
+      borderColor = tipoEvColors[e.tipo]||'#1660B8';
+      tagHtml = `<span class="pill p-evento-tag" style="font-size:10px">${tipoEvLabels[e.tipo]||e.tipo}</span>`;
+      actBtns = canAct ? `<button class="btn-edit" onclick="editEvento('${e.id}')"><i class="ti ti-pencil"></i></button>
+        <button class="btn-sm danger" style="padding:4px 8px;font-size:11px" onclick="confirmarRemocao('${e.id}','evento')"><i class="ti ti-trash"></i></button>` : '';
+    } else if(e._srcType==='reuniao'){
+      borderColor = nivelBorderColor[e.nivel]||'#0C6E52';
+      tagHtml = `<span class="pill p-reuniao-tag" style="font-size:10px">Reunião · ${nivelLabels[e.nivel]||e.nivel}</span>`;
+      actBtns = canAct ? `<button class="btn-edit" onclick="editReuniao('${e._reuniaoId||e.id}');showSection('reunioes',document.querySelectorAll('.nav-btn')[3])"><i class="ti ti-pencil"></i></button>` : '';
+    } else if(e._srcType==='demanda'){
+      borderColor = '#B8720F';
+      tagHtml = `<span class="pill p-demanda-tag" style="font-size:10px">Demanda · Prazo</span>`;
+      actBtns = canAct ? `<button class="btn-edit" onclick="showSectionFiltered('demandas','todos');setTimeout(()=>showDetalhe('${e.id}'),100)"><i class="ti ti-arrow-right"></i></button>` : '';
+    }
+    return `<div class="event-item" style="border-left-color:${borderColor}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+        <div>
+          <div class="ev-title">${escHtml(e.titulo)}</div>
+          <div style="margin-top:4px">${tagHtml}</div>
+        </div>
+        <div style="display:flex;gap:5px;flex-shrink:0">${actBtns}</div>
+      </div>
+      <div class="ev-meta" style="margin-top:6px">
+        <span><i class="ti ti-calendar"></i>${fmt(e.data)}</span>
+        ${e.hora?`<span><i class="ti ti-clock"></i>${e.hora}</span>`:''}
+        ${e.local?`<span><i class="ti ti-map-pin"></i>${escHtml(e.local)}</span>`:''}
+      </div>
+      ${e.obs?`<div class="ev-obs">${escHtml(e.obs)}</div>`:''}
+    </div>`;
+  }).join('');
+}
+
+function editEvento(id) {
+  const e=state.eventos.find(x=>x.id===id); if(!e) return;
+  editingEventoId=id;
+  setv('ev-titulo',e.titulo);setv('ev-data',e.data);setv('ev-hora',e.hora);setv('ev-tipo',e.tipo);setv('ev-local',e.local);setv('ev-obs',e.obs);
+  openModal('modal-evento');
+}
+
+function salvarEvento() {
+  const titulo=gv('ev-titulo'),data=sv('ev-data');
+  if(!titulo||!data){toast('Informe título e data.',true);return;}
+  const obj={titulo,data,hora:sv('ev-hora'),tipo:sv('ev-tipo'),local:gv('ev-local'),obs:gv('ev-obs')};
+  if(editingEventoId) {
+    const idx=state.eventos.findIndex(x=>x.id===editingEventoId);
+    if(idx>-1) state.eventos[idx]={...state.eventos[idx],...obj};
+    toast('Evento atualizado!');
+  } else {
+    obj.id=uid(); state.eventos.push(obj); toast('Evento adicionado!');
+  }
+  ['ev-titulo','ev-data','ev-hora','ev-local','ev-obs'].forEach(cv);
+  editingEventoId=null; closeModal('modal-evento'); pushState(); renderCalendario();
+}
+
+// ══════════════════════════════════════════════════
+// REUNIÕES
+// ══════════════════════════════════════════════════
+function renderReunioes() {
+  const nivs=['todos','interno','ses','geres','nacional','intersetorial','gabinete'];
+  const nLbls={todos:'Todos',interno:'Equipe',ses:'Secretarias',geres:'GERES',nacional:'Nacional',intersetorial:'Intersetorial',gabinete:'Gabinete'};
+  document.getElementById('reuniao-filters').innerHTML=nivs.map(f=>`<button class="filter-btn${reuniaoFilter===f?' active':''}" onclick="setReuniaoFilter('${f}')">${nLbls[f]}</button>`).join('');
+  const canAct=true;
+  const list=(reuniaoFilter==='todos'?state.reunioes:state.reunioes.filter(r=>r.nivel===reuniaoFilter)).sort((a,b)=>a.data.localeCompare(b.data));
+  document.getElementById('lista-reunioes').innerHTML=list.length?list.map(r=>`
+    <div class="event-item" style="border-left-color:${nivelBorderColor[r.nivel]||'#1660B8'}">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+        <div>
+          <div class="ev-title">${escHtml(r.titulo)}</div>
+          <div style="margin-top:4px">
+            <span class="pill" style="background:var(--gray-lt);color:var(--gray);font-size:10px">${modLabels[r.mod]||r.mod}</span>
+            <span class="pill" style="background:var(--blue-lt);color:var(--blue);font-size:10px;margin-left:4px">${nivelLabels[r.nivel]||r.nivel}</span>
+          </div>
+        </div>
+        <div style="display:flex;gap:5px;align-items:center;flex-shrink:0">
+          ${canAct?`<button class="btn-edit" onclick="editReuniao('${r.id}')"><i class="ti ti-pencil"></i></button>
+          <button class="btn-sm danger" style="padding:4px 8px;font-size:11px" onclick="confirmarRemocao('${r.id}','reuniao')"><i class="ti ti-trash"></i></button>`:''}
+        </div>
+      </div>
+      <div class="ev-meta" style="margin-top:7px">
+        <span><i class="ti ti-calendar"></i>${fmt(r.data)}</span>
+        <span><i class="ti ti-clock"></i>${r.hora||'—'}</span>
+        ${r.local?`<span><i class="ti ti-map-pin"></i>${escHtml(r.local)}</span>`:''}
+      </div>
+      ${r.part?`<div class="ev-obs"><i class="ti ti-users" style="font-size:12px;vertical-align:-2px;margin-right:4px"></i>${escHtml(r.part)}</div>`:''}
+      ${r.obs?`<div class="ev-obs">${escHtml(r.obs)}</div>`:''}
+    </div>`).join('')
+    :'<div class="empty-state"><i class="ti ti-calendar-off"></i><p>Nenhuma reunião neste filtro</p></div>';
+}
+
+function setReuniaoFilter(f){reuniaoFilter=f;renderReunioes();}
+
+function editReuniao(id) {
+  const r=state.reunioes.find(x=>x.id===id);if(!r)return;
+  editingReuniaoId=id;
+  setv('r-titulo',r.titulo);setv('r-data',r.data);setv('r-hora',r.hora);setv('r-nivel',r.nivel);setv('r-mod',r.mod);setv('r-part',r.part);setv('r-local',r.local);setv('r-obs',r.obs);
+  openModal('modal-reuniao');
+}
+
+function salvarReuniao() {
+  const titulo=gv('r-titulo'),data=sv('r-data');
+  if(!titulo||!data){toast('Informe título e data.',true);return;}
+  const obj={titulo,data,hora:sv('r-hora'),nivel:sv('r-nivel'),mod:sv('r-mod'),part:gv('r-part'),local:gv('r-local'),obs:gv('r-obs')};
+
+  if(editingReuniaoId) {
+    const idx=state.reunioes.findIndex(x=>x.id===editingReuniaoId);
+    if(idx>-1) {
+      state.reunioes[idx]={...state.reunioes[idx],...obj};
+      // atualiza evento-ponte se existir
+      const evIdx=state.eventos.findIndex(ev=>ev._reuniaoId===editingReuniaoId);
+      if(evIdx>-1) {
+        state.eventos[evIdx]={...state.eventos[evIdx],titulo,data,hora:sv('r-hora')||'',local:gv('r-local')};
+      }
+    }
+    toast('Reunião atualizada!');
+  } else {
+    const rid=uid();
+    obj.id=rid;
+    state.reunioes.push(obj);
+    // cria evento-ponte na agenda
+    state.eventos.push({
+      id:uid(), titulo, data, hora:sv('r-hora')||'',
+      tipo:'interno_ses', local:gv('r-local'), obs: gv('r-obs'),
+      _reuniaoId: rid
+    });
+    toast('Reunião agendada!');
+  }
+  ['r-titulo','r-data','r-hora','r-part','r-local','r-obs'].forEach(cv);
+  editingReuniaoId=null; closeModal('modal-reuniao'); pushState(); renderReunioes(); renderDashboard();
+}
+
+// ══════════════════════════════════════════════════
+// INFRAESTRUTURA
+// ══════════════════════════════════════════════════
+function renderInfra() {
+  const abertos=state.infraestrutura.filter(e=>e.status!=='concluido');
+  document.getElementById('lista-infra').innerHTML=abertos.length?abertos.map(e=>`
+    <div class="infra-item">
+      <div class="d-icon tc-infraestrutura"><i class="ti ti-server"></i></div>
+      <div class="d-info">
+        <div class="d-title">${escHtml(e.titulo)}</div>
+        <div class="d-meta"><span>${catLabel[e.cat]||e.cat}</span>${e.desc?`<span>${escHtml(e.desc)}</span>`:''}<span>Aberto em ${fmt(e.created)}</span></div>
+        <div class="infra-actions">
+          ${e.status!=='andamento'?`<button class="btn-sm" onclick="setInfraStatus('${e.id}','andamento')"><i class="ti ti-player-play"></i>Em tratamento</button>`:''}
+          <button class="btn-sm success" onclick="setInfraStatus('${e.id}','concluido')"><i class="ti ti-check"></i>Concluir</button>
+          <button class="btn-edit" onclick="editInfra('${e.id}')"><i class="ti ti-pencil"></i>Editar</button>
+          <button class="btn-sm danger" onclick="confirmarRemocao('${e.id}','infra')"><i class="ti ti-trash"></i></button>
+        </div>
+      </div>
+      <div class="d-right">
+        <span class="pill p-${e.urg}">${e.urg}</span>
+        <span class="pill p-${e.status==='aberto'?'pendente':'andamento'}">${e.status}</span>
+      </div>
+    </div>`).join('')
+    :'<div class="empty-state"><i class="ti ti-circle-check"></i><p>Nenhum chamado aberto</p></div>';
+}
+
+function setInfraStatus(id,s) {
+  const e=state.infraestrutura.find(x=>x.id===id);
+  if(e){e.status=s;pushState();renderInfra();toast(s==='concluido'?'Chamado concluído!':'Chamado em tratamento.');}
+}
+
+function editInfra(id) {
+  const e=state.infraestrutura.find(x=>x.id===id);if(!e)return;
+  editingInfraId=id;
+  setv('est-titulo',e.titulo);setv('est-cat',e.cat);setv('est-urg',e.urg);setv('est-desc',e.desc);
+  openModal('modal-infra');
+}
+
+function salvarInfra() {
+  const titulo=gv('est-titulo');
+  if(!titulo){toast('Informe a descrição.',true);return;}
+  const urg=sv('est-urg'),desc=gv('est-desc'),cat=sv('est-cat');
+  if(editingInfraId) {
+    const idx=state.infraestrutura.findIndex(x=>x.id===editingInfraId);
+    if(idx>-1) state.infraestrutura[idx]={...state.infraestrutura[idx],titulo,cat,urg,desc};
+    toast('Chamado atualizado!');
+  } else {
+    state.infraestrutura.unshift({id:uid(),titulo,cat,urg,desc,status:'aberto',created:todayStr});
+    state.demandas.unshift({id:uid(),titulo:'[Infra] '+titulo,tipo:'infraestrutura',origem:'Chamado de infraestrutura',prazo:todayStr,desc,resp:'TI / Infraestrutura',status:'pendente',created:todayStr});
+    toast('Chamado registrado!');
+  }
+  ['est-titulo','est-desc'].forEach(cv);
+  editingInfraId=null; closeModal('modal-infra'); pushState(); renderInfra(); updateBadge(); renderDashboard();
+}
+
+// ══════════════════════════════════════════════════
+// CHAT SIDEBAR
+// ══════════════════════════════════════════════════
+function toggleChat() {
+  chatOpen = !chatOpen;
+  document.getElementById('chat-sidebar').classList.toggle('open', chatOpen);
+  document.getElementById('app-body').classList.toggle('chat-open', chatOpen);
+  if(chatOpen) {
+    markRead();
+    renderChatMsgs();
+    setTimeout(()=>{
+      const msgs = document.getElementById('chat-messages');
+      if(msgs) msgs.scrollTop = msgs.scrollHeight;
+      document.getElementById('chat-input').focus();
+    },100);
+  }
+}
+
+function getMyInbox() {
+  return currentRole==='apoio' ? (state.msgs_gestao||[]) : (state.msgs_apoio||[]);
+}
+function getMyOutbox() {
+  return currentRole==='apoio' ? (state.msgs_apoio||[]) : (state.msgs_gestao||[]);
+}
+function getMyOutboxKey() { return currentRole==='apoio' ? 'msgs_apoio' : 'msgs_gestao'; }
+
+function renderChatMsgs() {
+  const inbox = getMyInbox();
+  const outbox = getMyOutbox();
+  const all = [
+    ...inbox.map(m=>({...m, dir:'in'})),
+    ...outbox.map(m=>({...m, dir:'out'}))
+  ].sort((a,b)=>a.ts-b.ts);
+
+  const el = document.getElementById('chat-messages');
+  if(!el) return;
+
+  if(!all.length) {
+    el.innerHTML = `<div class="chat-empty"><i class="ti ti-messages"></i><p>Sem mensagens ainda.<br>Inicie a conversa!</p></div>`;
+    return;
+  }
+
+  el.innerHTML = all.map(m => {
+    const isSent = m.dir==='out';
+    const fromLabel = isSent ? 'Você' : (currentRole==='apoio' ? 'Gestão' : 'Apoio');
+    return `<div class="chat-bubble ${isSent?'sent':'recv'}">
+      <div class="cb-from">${fromLabel}</div>
+      <div>${escHtml(m.body)}</div>
+      <div class="cb-time">${fmtTs(m.ts)}</div>
+    </div>`;
+  }).join('');
+
+  el.scrollTop = el.scrollHeight;
+}
+
+function sendMsg() {
+  const inp = document.getElementById('chat-input');
+  const body = inp ? inp.value.trim() : '';
+  if(!body) return;
+  const key = getMyOutboxKey();
+  if(!state[key]) state[key]=[];
+  state[key].push({id:uid(), body, ts:Date.now(), read:false});
+  inp.value='';
+  pushState();
+  renderChatMsgs();
+  toast('Mensagem enviada!');
+}
+
+function markRead() {
+  const inbox = currentRole==='apoio' ? 'msgs_gestao' : 'msgs_apoio';
+  if(state[inbox]) state[inbox].forEach(m=>m.read=true);
+  document.getElementById('chat-dot').classList.remove('show');
+  pushState();
+}
+
+function checkUnread() {
+  const inbox = getMyInbox();
+  const hasUnread = inbox.some(m=>!m.read);
+  document.getElementById('chat-dot').classList.toggle('show', hasUnread);
+}
+
+function fmtTs(ts) {
+  if(!ts) return '';
+  const d=new Date(ts);
+  return d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})
+    +' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+}
+
+// ══════════════════════════════════════════════════
+// INICIALIZAÇÃO
+// ══════════════════════════════════════════════════
+function renderNotesPanel() {
+  // renderizado junto com renderTodoPanel dentro de renderDashboard via dash-todo-notes
+}
+
+function init() {
+  setRole('apoio');
+  renderAll();
+  initFirebase();
+  setInterval(()=>{
+    if(!useFirebase){
+      try{
+        const s=localStorage.getItem('cispe-v4');
+        if(s){
+          const remote = JSON.parse(s);
+          // só atualiza msgs e verifica unread
+          if(remote.msgs_apoio) state.msgs_apoio = remote.msgs_apoio;
+          if(remote.msgs_gestao) state.msgs_gestao = remote.msgs_gestao;
+          checkUnread();
+          if(chatOpen) renderChatMsgs();
+        }
+      }catch(e){}
+    }
+  }, 8000);
+}
+
+init();
+</script>
+</body>
+</html>
