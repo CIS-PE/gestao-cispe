@@ -481,7 +481,12 @@ body{font-family:'DM Sans',sans-serif;background:#F2F1EE;color:#1C1B18;min-heigh
     <span class="section-title">Infraestrutura / Chamados</span>
     <button class="btn-add" onclick="openModal('modal-infra');editingInfraId=null"><i class="ti ti-plus"></i>Novo chamado</button>
   </div>
-  <div id="lista-infra"></div>
+  <div class="two-col">
+    <div id="lista-infra"></div>
+    <div id="detalhe-infra">
+      <div class="empty-state"><i class="ti ti-click"></i><p>Selecione um chamado para ver detalhes</p></div>
+    </div>
+  </div>
 </div>
 
 </div><!-- /content -->
@@ -489,6 +494,13 @@ body{font-family:'DM Sans',sans-serif;background:#F2F1EE;color:#1C1B18;min-heigh
 
 <!-- TOAST -->
 <div class="toast" id="toast"><i class="ti ti-check" id="toast-icon"></i><span id="toast-msg"></span></div>
+
+<!-- DASHBOARD DETAIL OVERLAY -->
+<div id="dash-detail-overlay" style="display:none;position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.35);backdrop-filter:blur(2px)" onclick="closeDashDetail()">
+  <div id="dash-detail-panel" style="position:absolute;right:0;top:52px;bottom:0;width:380px;max-width:100%;background:var(--bg);border-left:1px solid var(--border2);box-shadow:-4px 0 24px rgba(0,0,0,.12);overflow-y:auto;padding:20px" onclick="event.stopPropagation()">
+    <div id="dash-detail-content"></div>
+  </div>
+</div>
 
 <!-- MODAL DEMANDA -->
 <div class="modal-overlay" id="modal-demanda" style="display:none" onclick="outsideClose(event,'modal-demanda')">
@@ -910,7 +922,7 @@ function renderDashboard() {
         const rOverdue = r.data < todayStr;
         const rOvCls = rOverdue ? ' overdue' : '';
         const rOvBadge = rOverdue ? `<span class="overdue-badge" style="margin-left:6px"><i class="ti ti-alert-triangle" style="font-size:11px"></i>VENCIDO</span>` : '';
-        return `<div class="event-item${rOvCls}" style="border-left-color:${nivelBorderColor[r.nivel]||'var(--blue)'};cursor:pointer" onclick="editReuniao('${r.id}')">
+        return `<div class="event-item${rOvCls}" style="border-left-color:${nivelBorderColor[r.nivel]||'var(--blue)'};cursor:pointer" onclick="showDashDetalhe('reuniao','${r.id}')">
           <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
             <div class="ev-title">${escHtml(r.titulo)}</div>${rOvBadge}
           </div>
@@ -1018,7 +1030,7 @@ function demandaCard(d, clickable=true, dashMode=false) {
   const isOverdue = d.prazo && d.prazo < todayStr && d.status !== 'concluido';
   const overdueClass = isOverdue ? ' overdue' : '';
   const overdueBadge = isOverdue ? `<span class="overdue-badge"><i class="ti ti-alert-triangle" style="font-size:11px"></i>VENCIDO</span>` : '';
-  const clickAction = clickable!==false ? (dashMode ? `editDemanda('${d.id}')` : `showDetalhe('${d.id}')`) : '';
+  const clickAction = clickable!==false ? (dashMode ? `showDashDetalhe('demanda','${d.id}')` : `showDetalhe('${d.id}')`) : '';
   return `<div class="demand-item${sel}${overdueClass}" onclick="${clickAction}" >
     <div class="d-icon ${tipoColors[d.tipo]||'tc-outros'}"><i class="ti ${tipoIcons[d.tipo]||'ti-clipboard'}"></i></div>
     <div class="d-info">
@@ -1162,7 +1174,7 @@ function execRemover(id, tipo) {
     if(dp) dp.innerHTML='<div class="empty-state"><i class="ti ti-click"></i><p>Selecione uma reunião para ver detalhes</p></div>';
     pushState(); renderReunioes(); renderDashboard(); toast('Reunião removida.');
   }
-  else if(tipo==='infra') { state.infraestrutura=state.infraestrutura.filter(x=>x.id!==id); pushState(); renderInfra(); toast('Chamado removido.'); }
+  else if(tipo==='infra') { state.infraestrutura=state.infraestrutura.filter(x=>x.id!==id); selectedInfra=null; const dp=document.getElementById('detalhe-infra'); if(dp) dp.innerHTML='<div class="empty-state"><i class="ti ti-click"></i><p>Selecione um chamado para ver detalhes</p></div>'; pushState(); renderInfra(); updateBadge(); renderDashboard(); toast('Chamado removido.'); }
 }
 
 // ══════════════════════════════════════════════════
@@ -1243,21 +1255,21 @@ function renderAgendaEvents(day) {
     if(e._srcType==='evento'){
       borderColor = tipoEvColors[e.tipo]||'#1660B8';
       tagHtml = `<span class="pill p-evento-tag" style="font-size:10px">${tipoEvLabels[e.tipo]||e.tipo}</span>`;
-      actBtns = canAct ? `<button class="btn-edit" onclick="editEvento('${e.id}')"><i class="ti ti-pencil"></i></button>
-        <button class="btn-sm danger" style="padding:4px 8px;font-size:11px" onclick="confirmarRemocao('${e.id}','evento')"><i class="ti ti-trash"></i></button>` : '';
+      actBtns = canAct ? `<button class="btn-edit" onclick="event.stopPropagation();editEvento('${e.id}')"><i class="ti ti-pencil"></i></button>
+        <button class="btn-sm danger" style="padding:4px 8px;font-size:11px" onclick="event.stopPropagation();confirmarRemocao('${e.id}','evento')"><i class="ti ti-trash"></i></button>` : '';
     } else if(e._srcType==='reuniao'){
       borderColor = nivelBorderColor[e.nivel]||'#0C6E52';
       tagHtml = `<span class="pill p-reuniao-tag" style="font-size:10px">Reunião · ${nivelLabels[e.nivel]||e.nivel}</span>`;
-      actBtns = canAct ? `<button class="btn-edit" onclick="editReuniao('${e._reuniaoId||e.id}')"><i class="ti ti-pencil"></i></button>` : '';
+      actBtns = canAct ? `<button class="btn-edit" onclick="event.stopPropagation();editReuniao('${e._reuniaoId||e.id}')"><i class="ti ti-pencil"></i></button>` : '';
     } else if(e._srcType==='demanda'){
       borderColor = '#B8720F';
       tagHtml = `<span class="pill p-demanda-tag" style="font-size:10px">Demanda · ${tipoLabels[e.tipo_dem]||e.tipo_dem||'Prazo'}</span>`;
-      actBtns = canAct ? `<button class="btn-edit" onclick="showSectionFiltered('demandas','todos');setTimeout(()=>showDetalhe('${e.id}'),100)"><i class="ti ti-arrow-right"></i></button>` : '';
+      actBtns = canAct ? `<button class="btn-edit" onclick="event.stopPropagation();showSectionFiltered('demandas','todos');setTimeout(()=>showDetalhe('${e.id}'),100)"><i class="ti ti-arrow-right"></i></button>` : '';
     }
     const evOv = e.data && e.data < todayStr;
     const evOvCls = evOv ? ' overdue' : '';
     const evOvBadge = evOv ? `<span class="overdue-badge" style="margin-left:6px"><i class="ti ti-alert-triangle" style="font-size:11px"></i>VENCIDO</span>` : '';
-    return `<div class="event-item${evOvCls}" style="border-left-color:${borderColor}">
+    return `<div class="event-item${evOvCls}" style="border-left-color:${borderColor};cursor:pointer" onclick="showAgendaDetalhe('${e._srcType}','${e._srcType==='reuniao'?(e._reuniaoId||e.id):e.id}')">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
         <div>
           <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"><div class="ev-title">${escHtml(e.titulo)}</div>${evOvBadge}</div>
@@ -1415,30 +1427,63 @@ function salvarReuniao() {
 // ══════════════════════════════════════════════════
 function renderInfra() {
   const abertos=state.infraestrutura.filter(e=>e.status!=='concluido');
-  document.getElementById('lista-infra').innerHTML=abertos.length?abertos.map(e=>`
-    <div class="infra-item">
+  document.getElementById('lista-infra').innerHTML=abertos.length?abertos.map(e=>{
+    const sel = selectedInfra===e.id ? ' selected' : '';
+    return `<div class="demand-item${sel}" onclick="showDetalheInfra('${e.id}')">
       <div class="d-icon tc-infraestrutura"><i class="ti ti-server"></i></div>
       <div class="d-info">
         <div class="d-title">${escHtml(e.titulo)}</div>
         <div class="d-meta"><span>${catLabel[e.cat]||e.cat}</span>${e.desc?`<span>${escHtml(e.desc)}</span>`:''}<span>Aberto em ${fmt(e.created)}</span></div>
-        <div class="infra-actions">
-          ${e.status!=='andamento'?`<button class="btn-sm" onclick="setInfraStatus('${e.id}','andamento')"><i class="ti ti-player-play"></i>Em tratamento</button>`:''}
-          <button class="btn-sm success" onclick="setInfraStatus('${e.id}','concluido')"><i class="ti ti-check"></i>Concluir</button>
-          <button class="btn-edit" onclick="editInfra('${e.id}')"><i class="ti ti-pencil"></i>Editar</button>
-          <button class="btn-sm danger" onclick="confirmarRemocao('${e.id}','infra')"><i class="ti ti-trash"></i></button>
-        </div>
       </div>
       <div class="d-right">
         <span class="pill p-${e.urg}">${e.urg}</span>
         <span class="pill p-${e.status==='aberto'?'pendente':'andamento'}">${e.status}</span>
       </div>
-    </div>`).join('')
+    </div>`;
+  }).join('')
     :'<div class="empty-state"><i class="ti ti-circle-check"></i><p>Nenhum chamado aberto</p></div>';
+}
+
+let selectedInfra = null;
+
+function showDetalheInfra(id) {
+  selectedInfra = id;
+  const e = state.infraestrutura.find(x=>x.id===id);
+  if(!e) return;
+  renderInfra();
+  document.getElementById('detalhe-infra').innerHTML = `
+    <div class="detail-panel">
+      <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
+        <span class="pill p-${e.urg}">${e.urg}</span>
+        <span class="pill p-${e.status==='aberto'?'pendente':'andamento'}">${e.status}</span>
+      </div>
+      <div class="dp-title">${escHtml(e.titulo)}</div>
+      ${e.desc?`<div class="dp-desc">${escHtml(e.desc)}</div>`:''}
+      <div class="dp-row"><span class="dp-lbl">Categoria</span><span class="dp-val">${catLabel[e.cat]||e.cat}</span></div>
+      <div class="dp-row"><span class="dp-lbl">Urgência</span><span class="dp-val">${e.urg}</span></div>
+      <div class="dp-row"><span class="dp-lbl">Aberto em</span><span class="dp-val">${fmt(e.created)}</span></div>
+      <div class="action-row">
+        ${e.status!=='andamento'?`<button class="btn-sm" onclick="setInfraStatus('${e.id}','andamento')"><i class="ti ti-player-play"></i>Em tratamento</button>`:''}
+        <button class="btn-sm success" onclick="setInfraStatus('${e.id}','concluido')"><i class="ti ti-check"></i>Concluir</button>
+        <button class="btn-edit" onclick="editInfra('${e.id}')"><i class="ti ti-pencil"></i>Editar</button>
+        <button class="btn-sm danger" onclick="confirmarRemocao('${e.id}','infra')"><i class="ti ti-trash"></i></button>
+      </div>
+    </div>`;
 }
 
 function setInfraStatus(id,s) {
   const e=state.infraestrutura.find(x=>x.id===id);
-  if(e){e.status=s;pushState();renderInfra();toast(s==='concluido'?'Chamado concluído!':'Chamado em tratamento.');}
+  if(e){
+    e.status=s;
+    if(s==='concluido'){
+      selectedInfra=null;
+      const dp=document.getElementById('detalhe-infra');
+      if(dp) dp.innerHTML='<div class="empty-state"><i class="ti ti-click"></i><p>Selecione um chamado para ver detalhes</p></div>';
+    }
+    pushState();renderInfra();renderDashboard();
+    toast(s==='concluido'?'Chamado concluído!':'Chamado em tratamento.');
+    if(s!=='concluido') showDetalheInfra(id);
+  }
 }
 
 function editInfra(id) {
@@ -1462,6 +1507,7 @@ function salvarInfra() {
   }
   ['est-titulo','est-desc'].forEach(cv);
   editingInfraId=null; closeModal('modal-infra'); pushState(); renderInfra(); updateBadge(); renderDashboard();
+  if(selectedInfra) showDetalheInfra(selectedInfra);
 }
 
 // ══════════════════════════════════════════════════
@@ -1578,6 +1624,151 @@ function init() {
       }catch(e){}
     }
   }, 8000);
+}
+
+// ══════════════════════════════════════════════════
+// DASHBOARD DETAIL OVERLAY
+// ══════════════════════════════════════════════════
+function showDashDetalhe(tipo, id) {
+  const overlay = document.getElementById('dash-detail-overlay');
+  const content = document.getElementById('dash-detail-content');
+  let html = '';
+  if(tipo === 'demanda') {
+    const d = state.demandas.find(x=>x.id===id);
+    if(!d) return;
+    html = `
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <span class="pill ${tipoColors[d.tipo]||'tc-outros'}">${tipoLabels[d.tipo]||d.tipo}</span>
+          <span class="pill p-${d.status}">${d.status}</span>
+        </div>
+        <button onclick="closeDashDetail()" style="background:none;border:none;cursor:pointer;color:var(--text2);font-size:20px;line-height:1;padding:2px;border-radius:4px"><i class="ti ti-x"></i></button>
+      </div>
+      <div class="dp-title">${escHtml(d.titulo)}</div>
+      ${d.desc?`<div class="dp-desc" style="margin-top:10px">${escHtml(d.desc)}</div>`:''}
+      <div style="margin-top:12px">
+        <div class="dp-row"><span class="dp-lbl">Origem</span><span class="dp-val">${escHtml(d.origem||'—')}</span></div>
+        <div class="dp-row"><span class="dp-lbl">Prazo</span><span class="dp-val">${fmt(d.prazo)}</span></div>
+        <div class="dp-row"><span class="dp-lbl">Responsável</span><span class="dp-val">${escHtml(d.resp||'—')}</span></div>
+        <div class="dp-row"><span class="dp-lbl">Registrado</span><span class="dp-val">${fmt(d.created)}</span></div>
+      </div>
+      <div class="action-row">
+        ${d.status!=='andamento'?`<button class="btn-sm" onclick="setStatus('${d.id}','andamento');closeDashDetail();"><i class="ti ti-player-play"></i>Em andamento</button>`:''}
+        ${d.status!=='concluido'?`<button class="btn-sm success" onclick="setStatus('${d.id}','concluido');closeDashDetail();"><i class="ti ti-check"></i>Concluir</button>`:''}
+        <button class="btn-edit" onclick="closeDashDetail();editDemanda('${d.id}')"><i class="ti ti-pencil"></i>Editar</button>
+        <button class="btn-sm danger" onclick="closeDashDetail();confirmarRemocao('${d.id}','demanda')"><i class="ti ti-trash"></i></button>
+      </div>`;
+  } else if(tipo === 'reuniao') {
+    const r = state.reunioes.find(x=>x.id===id);
+    if(!r) return;
+    html = `
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <span class="pill" style="background:var(--blue-lt);color:var(--blue)">${nivelLabels[r.nivel]||r.nivel}</span>
+          <span class="pill" style="background:var(--gray-lt);color:var(--gray)">${modLabels[r.mod]||r.mod}</span>
+        </div>
+        <button onclick="closeDashDetail()" style="background:none;border:none;cursor:pointer;color:var(--text2);font-size:20px;line-height:1;padding:2px;border-radius:4px"><i class="ti ti-x"></i></button>
+      </div>
+      <div class="dp-title">${escHtml(r.titulo)}</div>
+      ${r.obs?`<div class="dp-desc" style="margin-top:10px">${escHtml(r.obs)}</div>`:''}
+      <div style="margin-top:12px">
+        <div class="dp-row"><span class="dp-lbl">Data</span><span class="dp-val">${fmt(r.data)}</span></div>
+        <div class="dp-row"><span class="dp-lbl">Horário</span><span class="dp-val">${r.hora||'—'}</span></div>
+        <div class="dp-row"><span class="dp-lbl">Local</span><span class="dp-val">${escHtml(r.local||'—')}</span></div>
+        <div class="dp-row"><span class="dp-lbl">Participantes</span><span class="dp-val">${escHtml(r.part||'—')}</span></div>
+        <div class="dp-row"><span class="dp-lbl">Registrado</span><span class="dp-val">${fmt(r.data)}</span></div>
+      </div>
+      <div class="action-row">
+        <button class="btn-sm success" onclick="concluirReuniao('${r.id}');closeDashDetail();"><i class="ti ti-check"></i>Concluir</button>
+        <button class="btn-edit" onclick="closeDashDetail();editReuniao('${r.id}')"><i class="ti ti-pencil"></i>Editar</button>
+        <button class="btn-sm danger" onclick="closeDashDetail();confirmarRemocao('${r.id}','reuniao')"><i class="ti ti-trash"></i></button>
+      </div>`;
+  }
+  content.innerHTML = html;
+  overlay.style.display = 'block';
+}
+
+function closeDashDetail() {
+  document.getElementById('dash-detail-overlay').style.display = 'none';
+}
+
+// ══════════════════════════════════════════════════
+// AGENDA DETAIL OVERLAY
+// ══════════════════════════════════════════════════
+function showAgendaDetalhe(srcType, id) {
+  const overlay = document.getElementById('dash-detail-overlay');
+  const content = document.getElementById('dash-detail-content');
+  let html = '';
+  if(srcType === 'evento') {
+    const e = state.eventos.find(x=>x.id===id);
+    if(!e) return;
+    const borderColor = tipoEvColors[e.tipo]||'#1660B8';
+    html = `
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+        <span class="pill p-evento-tag">${tipoEvLabels[e.tipo]||e.tipo}</span>
+        <button onclick="closeDashDetail()" style="background:none;border:none;cursor:pointer;color:var(--text2);font-size:20px;line-height:1;padding:2px;border-radius:4px"><i class="ti ti-x"></i></button>
+      </div>
+      <div class="dp-title">${escHtml(e.titulo)}</div>
+      ${e.obs?`<div class="dp-desc" style="margin-top:10px">${escHtml(e.obs)}</div>`:''}
+      <div style="margin-top:12px">
+        <div class="dp-row"><span class="dp-lbl">Data</span><span class="dp-val">${fmt(e.data)}</span></div>
+        ${e.hora?`<div class="dp-row"><span class="dp-lbl">Horário</span><span class="dp-val">${e.hora}</span></div>`:''}
+        ${e.local?`<div class="dp-row"><span class="dp-lbl">Local</span><span class="dp-val">${escHtml(e.local)}</span></div>`:''}
+      </div>
+      <div class="action-row">
+        <button class="btn-edit" onclick="closeDashDetail();editEvento('${e.id}')"><i class="ti ti-pencil"></i>Editar</button>
+        <button class="btn-sm danger" onclick="closeDashDetail();confirmarRemocao('${e.id}','evento')"><i class="ti ti-trash"></i></button>
+      </div>`;
+  } else if(srcType === 'reuniao') {
+    const r = state.reunioes.find(x=>x.id===id);
+    if(!r) return;
+    html = `
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <span class="pill p-reuniao-tag">Reunião · ${nivelLabels[r.nivel]||r.nivel}</span>
+          <span class="pill" style="background:var(--gray-lt);color:var(--gray)">${modLabels[r.mod]||r.mod}</span>
+        </div>
+        <button onclick="closeDashDetail()" style="background:none;border:none;cursor:pointer;color:var(--text2);font-size:20px;line-height:1;padding:2px;border-radius:4px"><i class="ti ti-x"></i></button>
+      </div>
+      <div class="dp-title">${escHtml(r.titulo)}</div>
+      ${r.obs?`<div class="dp-desc" style="margin-top:10px">${escHtml(r.obs)}</div>`:''}
+      <div style="margin-top:12px">
+        <div class="dp-row"><span class="dp-lbl">Data</span><span class="dp-val">${fmt(r.data)}</span></div>
+        <div class="dp-row"><span class="dp-lbl">Horário</span><span class="dp-val">${r.hora||'—'}</span></div>
+        <div class="dp-row"><span class="dp-lbl">Local</span><span class="dp-val">${escHtml(r.local||'—')}</span></div>
+        <div class="dp-row"><span class="dp-lbl">Participantes</span><span class="dp-val">${escHtml(r.part||'—')}</span></div>
+      </div>
+      <div class="action-row">
+        <button class="btn-sm success" onclick="concluirReuniao('${r.id}');closeDashDetail();renderCalendario();"><i class="ti ti-check"></i>Concluir</button>
+        <button class="btn-edit" onclick="closeDashDetail();editReuniao('${r.id}')"><i class="ti ti-pencil"></i>Editar</button>
+        <button class="btn-sm danger" onclick="closeDashDetail();confirmarRemocao('${r.id}','reuniao')"><i class="ti ti-trash"></i></button>
+      </div>`;
+  } else if(srcType === 'demanda') {
+    const d = state.demandas.find(x=>x.id===id);
+    if(!d) return;
+    html = `
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <span class="pill p-demanda-tag">Demanda · ${tipoLabels[d.tipo_dem||d.tipo]||'Prazo'}</span>
+          <span class="pill p-${d.status}">${d.status}</span>
+        </div>
+        <button onclick="closeDashDetail()" style="background:none;border:none;cursor:pointer;color:var(--text2);font-size:20px;line-height:1;padding:2px;border-radius:4px"><i class="ti ti-x"></i></button>
+      </div>
+      <div class="dp-title">${escHtml(d.titulo)}</div>
+      ${d.desc?`<div class="dp-desc" style="margin-top:10px">${escHtml(d.desc)}</div>`:''}
+      <div style="margin-top:12px">
+        <div class="dp-row"><span class="dp-lbl">Origem</span><span class="dp-val">${escHtml(d.origem||'—')}</span></div>
+        <div class="dp-row"><span class="dp-lbl">Prazo</span><span class="dp-val">${fmt(d.prazo)}</span></div>
+        <div class="dp-row"><span class="dp-lbl">Responsável</span><span class="dp-val">${escHtml(d.resp||'—')}</span></div>
+      </div>
+      <div class="action-row">
+        ${d.status!=='andamento'?`<button class="btn-sm" onclick="setStatus('${d.id}','andamento');closeDashDetail();renderCalendario();"><i class="ti ti-player-play"></i>Em andamento</button>`:''}
+        ${d.status!=='concluido'?`<button class="btn-sm success" onclick="setStatus('${d.id}','concluido');closeDashDetail();renderCalendario();"><i class="ti ti-check"></i>Concluir</button>`:''}
+        <button class="btn-edit" onclick="closeDashDetail();editDemanda('${d.id}')"><i class="ti ti-pencil"></i>Editar</button>
+      </div>`;
+  }
+  content.innerHTML = html;
+  overlay.style.display = 'block';
 }
 
 init();
