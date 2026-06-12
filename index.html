@@ -258,8 +258,8 @@ body{font-family:'DM Sans',sans-serif;background:#F2F1EE;color:#1C1B18;min-heigh
 .dp-title{font-size:15px;font-weight:600;color:var(--text);margin-bottom:10px;line-height:1.4}
 .dp-desc{font-size:13px;color:var(--text2);line-height:1.65;margin-bottom:14px;padding:10px;background:var(--bg3);border-radius:var(--r)}
 .dp-row{display:flex;gap:10px;margin-bottom:7px;font-size:12.5px;align-items:flex-start}
-.dp-lbl{color:var(--text3);min-width:90px;font-size:11.5px;font-weight:500;padding-top:1px}
-.dp-val{color:var(--text);font-weight:500;flex:1}
+.dp-lbl{color:var(--text3);min-width:90px;font-size:11.5px;font-weight:500;padding-top:1px;flex-shrink:0}
+.dp-val{color:var(--text);font-weight:500;flex:1;word-break:break-word;overflow-wrap:anywhere;min-width:0}
 .action-row{display:flex;gap:7px;margin-top:14px;flex-wrap:wrap;padding-top:12px;border-top:1px solid var(--border)}
 .btn-sm{padding:6px 12px;border-radius:var(--r);font-size:12px;cursor:pointer;border:1px solid var(--border2);background:transparent;color:var(--text);display:flex;align-items:center;gap:5px;font-weight:500;transition:all .15s;font-family:inherit}
 .btn-sm:hover{background:var(--bg3)}
@@ -476,7 +476,7 @@ body{font-family:'DM Sans',sans-serif;background:#F2F1EE;color:#1C1B18;min-heigh
 
 <!-- DASHBOARD DETAIL OVERLAY -->
 <div id="dash-detail-overlay" style="display:none;position:fixed;inset:0;z-index:1500;background:rgba(0,0,0,.35);backdrop-filter:blur(2px);align-items:center;justify-content:center;padding:16px" onclick="if(event.target===this)closeDashDetail()">
-  <div id="dash-detail-panel" class="modal" style="width:480px" onclick="event.stopPropagation()">
+  <div id="dash-detail-panel" class="modal" style="width:480px;overflow-x:hidden" onclick="event.stopPagation()">
     <div id="dash-detail-content"></div>
   </div>
 </div>
