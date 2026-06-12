@@ -1555,7 +1555,7 @@ function showStatModal(kind) {
       : '<div class="empty-state"><i class="ti ti-mood-happy"></i><p>Nenhuma demanda aberta</p></div>';
   } else if(kind==='agenda') {
     title = 'Próximos eventos e reuniões';
-    const list = getAllAgendaItems().filter(e=>e.data>=todayStr).sort((a,b)=>a.data.localeCompare(b.data));
+    const list = getAllAgendaItems().filter(e=>e.data>=todayStr && e._srcType!=='demanda').sort((a,b)=>a.data.localeCompare(b.data));
     html = list.length ? list.map(agendaItemRow).join('')
       : '<div class="empty-state"><i class="ti ti-calendar-off"></i><p>Sem registros próximos</p></div>';
   } else if(kind==='infra') {
