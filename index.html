@@ -9,6 +9,7 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'DM Sans',sans-serif;background:#F2F1EE;color:#1C1B18;min-height:100vh;font-size:14px}
@@ -351,9 +352,13 @@ body{font-family:'DM Sans',sans-serif;background:#F2F1EE;color:#1C1B18;min-heigh
 /* ── INFRAESTRUTURA ── */
 .infra-item{background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:13px 15px;margin-bottom:8px;display:flex;align-items:flex-start;gap:11px;box-shadow:var(--shadow)}
 .infra-actions{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+
+.app-hidden{display:none!important}
 </style>
 </head>
 <body>
+
+<div id="app-root" class="app-hidden">
 <div class="sync-bar" id="sync-bar"></div>
 
 <!-- TOPBAR -->
@@ -614,10 +619,11 @@ body{font-family:'DM Sans',sans-serif;background:#F2F1EE;color:#1C1B18;min-heigh
   </div>
 </div>
 </div>
+</div><!-- /app-root -->
 
 <script>
 // ══════════════════════════════════════════════════
-// FIREBASE CONFIG — Realtime Database público
+// FIREBASE CONFIG
 // ══════════════════════════════════════════════════
 const firebaseConfig = {
   apiKey: "AIzaSyDbbP1TXij9iqcbgWhQyN8qMHv6aWx-AdA",
@@ -629,12 +635,40 @@ const firebaseConfig = {
   appId: "1:542101900216:web:35ff6e5a2e729856c51d4d"
 };
 
+if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+
+// ══════════════════════════════════════════════════
+// AUTENTICAÇÃO ANÔNIMA — sem tela de login, apenas
+// garante que requisições ao banco vêm de um app autenticado
+// ══════════════════════════════════════════════════
+const auth = firebase.auth();
+let appStarted = false;
+
+auth.onAuthStateChanged(user => {
+  if (user) {
+    document.getElementById('app-root').classList.remove('app-hidden');
+    if (!appStarted) { appStarted = true; init(); }
+  }
+});
+
+auth.signInAnonymously().catch(e => {
+  console.error('Falha na autenticação anônima:', e);
+  // Mesmo se a autenticação falhar, libera o app (modo offline/local)
+  if (!appStarted) {
+    appStarted = true;
+    document.getElementById('app-root').classList.remove('app-hidden');
+    init();
+  }
+});
+
+// ══════════════════════════════════════════════════
+// REALTIME DATABASE
+// ══════════════════════════════════════════════════
 let useFirebase = false;
 let db = null;
 
 function initFirebase() {
   try {
-    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
     db = firebase.database();
     db.ref('.info/connected').on('value', snap => {
       if (snap.val() === true) {
@@ -1722,7 +1756,7 @@ function showAgendaDetalhe(srcType, id) {
   overlay.style.display = 'flex';
 }
 
-init();
+// init() é chamado automaticamente pelo onAuthStateChanged, após o login
 </script>
 </body>
 </html>
