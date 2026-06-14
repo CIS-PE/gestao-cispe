@@ -361,6 +361,54 @@ body{font-family:'DM Sans',sans-serif;background:#F2F1EE;color:#1C1B18;min-heigh
 .infra-actions{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
 
 .app-hidden{display:none!important}
+
+/* ── MOBILE OVERFLOW FIX ── */
+@media(max-width:750px){
+  /* Prevent any section from overflowing horizontally */
+  .section, #sec-dashboard, #sec-demandas, #sec-reunioes, #sec-infraestrutura, #sec-agenda {
+    max-width:100%;overflow-x:hidden;
+  }
+  /* Stat grid already handled, but ensure no overflow */
+  .stat-grid{overflow-x:hidden}
+  /* Dash grid: stack vertically */
+  .dash-grid{grid-template-columns:1fr!important;overflow-x:hidden}
+  /* Todo/Notes grid: stack vertically */
+  #dash-todo-notes{grid-template-columns:1fr!important;overflow-x:hidden}
+  /* Demand items: prevent right side from overflowing */
+  .demand-item{
+    flex-wrap:wrap;overflow-x:hidden;min-width:0;
+    max-width:100%;
+  }
+  .d-info{min-width:0;overflow:hidden}
+  .d-title{white-space:normal;overflow-wrap:anywhere;word-break:break-word}
+  .d-right{
+    flex-direction:row;flex-wrap:wrap;align-items:center;
+    justify-content:flex-start;flex-shrink:1;min-width:0;
+    max-width:100%;
+  }
+  /* Two-col layout: stack to single col on mobile */
+  .two-col{grid-template-columns:1fr!important;overflow-x:hidden}
+  /* Detail panel: don't stick on mobile, keep readable */
+  .detail-panel{position:static;overflow-x:hidden;max-width:100%}
+  /* Infra items */
+  .infra-item{flex-wrap:wrap;overflow-x:hidden;max-width:100%}
+  .infra-actions{flex-wrap:wrap}
+  /* Filters wrap nicely */
+  .filters{flex-wrap:wrap}
+  /* Section header wraps */
+  .section-header{flex-wrap:wrap}
+  /* Pills don't overflow */
+  .pill{white-space:normal;word-break:break-word}
+  /* Stat modal full width */
+  #stat-modal-content, #dash-detail-panel{
+    width:100%!important;max-width:100%!important;
+  }
+  /* d-meta wraps */
+  .d-meta{flex-wrap:wrap;gap:6px}
+  /* Event items */
+  .event-item{overflow-x:hidden;max-width:100%}
+  .ev-meta{flex-wrap:wrap}
+}
 </style>
 </head>
 <body>
