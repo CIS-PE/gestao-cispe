@@ -164,7 +164,6 @@ body{font-family:'DM Sans',sans-serif;background:#F2F1EE;color:#1C1B18;min-heigh
 /* ── GRID PAINEL ── */
 .dash-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
 @media(max-width:800px){.dash-grid{grid-template-columns:1fr}}
-@media(max-width:800px){.dash-todo-notes{grid-template-columns:1fr!important}}
 
 /* ── TODO ── */
 .todo-wrap{background:var(--bg);border:1px solid var(--border);border-radius:var(--r-lg);padding:16px;box-shadow:var(--shadow);margin-bottom:16px}
@@ -388,7 +387,7 @@ body{font-family:'DM Sans',sans-serif;background:#F2F1EE;color:#1C1B18;min-heigh
 <!-- PAINEL -->
 <div class="section active" id="sec-dashboard">
   <div class="stat-grid" id="stat-row"></div>
-  <div class="dash-todo-notes" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px" id="dash-todo-notes">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px" id="dash-todo-notes">
     <!-- TO DO + ANOTAÇÕES ficam aqui via JS -->
   </div>
   <div class="dash-grid">
