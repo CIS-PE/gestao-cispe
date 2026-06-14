@@ -13,6 +13,7 @@
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'DM Sans',sans-serif;background:#F2F1EE;color:#1C1B18;min-height:100vh;font-size:14px}
+@media(max-width:750px){html,body{overflow-x:hidden}}
 :root{
   --bg:#FFFFFF;--bg2:#F2F1EE;--bg3:#E8E7E2;--bg4:#DDDCDA;
   --text:#1C1B18;--text2:#5C5B55;--text3:#9C9B93;
@@ -164,6 +165,7 @@ body{font-family:'DM Sans',sans-serif;background:#F2F1EE;color:#1C1B18;min-heigh
 /* ── GRID PAINEL ── */
 .dash-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
 @media(max-width:800px){.dash-grid{grid-template-columns:1fr}}
+@media(max-width:800px){.dash-todo-notes{grid-template-columns:1fr!important}}
 
 /* ── TODO ── */
 .todo-wrap{background:var(--bg);border:1px solid var(--border);border-radius:var(--r-lg);padding:16px;box-shadow:var(--shadow);margin-bottom:16px}
@@ -273,6 +275,11 @@ body{font-family:'DM Sans',sans-serif;background:#F2F1EE;color:#1C1B18;min-heigh
 /* ── AGENDA / CALENDÁRIO ── */
 .agenda-two-col{display:grid;grid-template-columns:295px 1fr;gap:20px}
 @media(max-width:750px){.agenda-two-col{grid-template-columns:1fr}}
+@media(max-width:750px){
+  .agenda-two-col,.agenda-two-col>div,.cal-wrap,.cal-grid,#agenda-events{max-width:100%;min-width:0}
+  .ev-title{word-break:break-word;overflow-wrap:anywhere}
+  .ev-meta{overflow-wrap:anywhere}
+}
 .agenda-header{display:flex;align-items:center;gap:10px;margin-bottom:12px}
 .agenda-month{font-size:14px;font-weight:600;flex:1}
 .month-nav{background:var(--bg);border:1px solid var(--border2);border-radius:7px;width:30px;height:30px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text2);transition:background .1s}
@@ -387,7 +394,7 @@ body{font-family:'DM Sans',sans-serif;background:#F2F1EE;color:#1C1B18;min-heigh
 <!-- PAINEL -->
 <div class="section active" id="sec-dashboard">
   <div class="stat-grid" id="stat-row"></div>
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px" id="dash-todo-notes">
+  <div class="dash-todo-notes" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px" id="dash-todo-notes">
     <!-- TO DO + ANOTAÇÕES ficam aqui via JS -->
   </div>
   <div class="dash-grid">
