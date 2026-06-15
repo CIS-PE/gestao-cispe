@@ -951,14 +951,14 @@ function renderDashboard() {
         const ovBadge = isOverdue ? `<span class="overdue-badge" style="margin-left:6px"><i class="ti ti-alert-triangle" style="font-size:11px"></i>VENCIDO</span>` : '';
         
         if (item._type === 'reuniao') {
-          return `<div class="event-item${ovCls}" style="border-left-color:${nivelBorderColor[item.nivel]||'var(--blue)'};cursor:pointer" onclick="showDashDetalhe('reuniao','${item.id}')">
+          return `<div class="event-item${ovCls}" style="border-left-color:${nivelBorderColor[item.nivel]||'var(--blue)'};cursor:pointer" onclick="showAgendaDetalhe('reuniao','${item.id}')">
             <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
               <div class="ev-title">${escHtml(item.titulo)}</div>${ovBadge}
             </div>
             <div class="ev-meta"><span><i class="ti ti-calendar"></i>${fmt(item.data)}</span><span><i class="ti ti-clock"></i>${item.hora||'—'}</span><span>${modLabels[item.mod]||''}</span><span class="pill" style="background:var(--gray-lt);color:var(--gray);font-size:10px">${nivelLabels[item.nivel]||item.nivel}</span></div>
           </div>`;
         } else {
-          return `<div class="event-item${ovCls}" style="border-left-color:${tipoEvColors[item.tipo]||'var(--blue)'};cursor:pointer" onclick="showDashDetalhe('evento','${item.id}')">
+          return `<div class="event-item${ovCls}" style="border-left-color:${tipoEvColors[item.tipo]||'var(--blue)'};cursor:pointer" onclick="showAgendaDetalhe('evento','${item.id}')">
             <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
               <div class="ev-title">${escHtml(item.titulo)}</div>${ovBadge}
             </div>
@@ -967,7 +967,6 @@ function renderDashboard() {
         }
       }).join('')
     : '<div class="empty-state"><i class="ti ti-calendar-off"></i><p>Sem reuniões ou eventos próximos</p></div>';
-}
 
 // ══════════════════════════════════════════════════
 // TO DO
