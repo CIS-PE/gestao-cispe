@@ -208,6 +208,8 @@ body{font-family:'DM Sans',sans-serif;background:#F2F1EE;color:#1C1B18;min-heigh
   display:flex;align-items:center;gap:6px;transition:background .15s;font-family:inherit;
 }
 .btn-add:hover{background:var(--blue-dk)}
+.btn-add.danger{background:var(--red)}
+.btn-add.danger:hover{background:#931b1b}
 .btn-add i{font-size:15px}
 
 /* ── FILTROS ── */
@@ -364,17 +366,12 @@ body{font-family:'DM Sans',sans-serif;background:#F2F1EE;color:#1C1B18;min-heigh
 
 /* ── MOBILE OVERFLOW FIX ── */
 @media(max-width:750px){
-  /* Prevent any section from overflowing horizontally */
-  .section, #sec-dashboard, #sec-demandas, #sec-reunioes, #sec-infraestrutura, #sec-agenda {
+  .section, #sec-dashboard, #sec-demandas, #sec-reunioes, #sec-infraestrutura, #sec-agenda, #sec-configuracoes {
     max-width:100%;overflow-x:hidden;
   }
-  /* Stat grid already handled, but ensure no overflow */
   .stat-grid{overflow-x:hidden}
-  /* Dash grid: stack vertically */
   .dash-grid{grid-template-columns:1fr!important;overflow-x:hidden}
-  /* Todo/Notes grid: stack vertically */
   #dash-todo-notes{grid-template-columns:1fr!important;overflow-x:hidden}
-  /* Demand items: prevent right side from overflowing */
   .demand-item{
     flex-wrap:wrap;overflow-x:hidden;min-width:0;
     max-width:100%;
@@ -386,26 +383,17 @@ body{font-family:'DM Sans',sans-serif;background:#F2F1EE;color:#1C1B18;min-heigh
     justify-content:flex-start;flex-shrink:1;min-width:0;
     max-width:100%;
   }
-  /* Two-col layout: stack to single col on mobile */
   .two-col{grid-template-columns:1fr!important;overflow-x:hidden}
-  /* Detail panel: don't stick on mobile, keep readable */
   .detail-panel{position:static;overflow-x:hidden;max-width:100%}
-  /* Infra items */
   .infra-item{flex-wrap:wrap;overflow-x:hidden;max-width:100%}
   .infra-actions{flex-wrap:wrap}
-  /* Filters wrap nicely */
   .filters{flex-wrap:wrap}
-  /* Section header wraps */
   .section-header{flex-wrap:wrap}
-  /* Pills don't overflow */
   .pill{white-space:normal;word-break:break-word}
-  /* Stat modal full width */
   #stat-modal-content, #dash-detail-panel{
     width:100%!important;max-width:100%!important;
   }
-  /* d-meta wraps */
   .d-meta{flex-wrap:wrap;gap:6px}
-  /* Event items */
   .event-item{overflow-x:hidden;max-width:100%}
   .ev-meta{flex-wrap:wrap}
 }
@@ -431,6 +419,7 @@ body{font-family:'DM Sans',sans-serif;background:#F2F1EE;color:#1C1B18;min-heigh
   <button class="nav-btn" onclick="showSection('reunioes',this)"><i class="ti ti-users"></i><span class="nav-label">Reuniões</span></button>
   <button class="nav-btn" onclick="showSection('infraestrutura',this)"><i class="ti ti-server"></i><span class="nav-label">Infraestrutura</span></button>
   <button class="nav-btn" onclick="showSection('agenda',this)"><i class="ti ti-calendar"></i><span class="nav-label">Agenda</span></button>
+  <button class="nav-btn" onclick="showSection('configuracoes',this)"><i class="ti ti-settings"></i><span class="nav-label">Configurações</span></button>
 </div>
 
 
@@ -512,6 +501,17 @@ body{font-family:'DM Sans',sans-serif;background:#F2F1EE;color:#1C1B18;min-heigh
     <div id="detalhe-infra">
       <div class="empty-state"><i class="ti ti-click"></i><p>Selecione um chamado para ver detalhes</p></div>
     </div>
+  </div>
+</div>
+
+<div class="section" id="sec-configuracoes">
+  <div class="section-header">
+    <span class="section-title">Configurações e Limpeza</span>
+    <button class="btn-add danger" onclick="confirmarLimpezaConcluidos()"><i class="ti ti-trash"></i>Limpar Concluídos</button>
+  </div>
+  <div class="two-col" style="display:block">
+     <div class="section-sub">Histórico de Itens Concluídos (Ordenados por Última Data)</div>
+     <div id="lista-concluidos" style="max-width: 800px; padding-bottom: 20px;"></div>
   </div>
 </div>
 
@@ -836,18 +836,20 @@ function showSection(id, btn) {
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
   document.getElementById('sec-'+id).classList.add('active');
   if(btn) btn.classList.add('active');
+  
   if(id==='demandas') renderDemandas();
   if(id==='agenda') renderCalendario();
   if(id==='reunioes') renderReunioes();
   if(id==='infraestrutura') renderInfra();
   if(id==='dashboard') renderDashboard();
+  if(id==='configuracoes') renderConfiguracoes();
 }
 
 function showSectionFiltered(id, filter) {
   dashFilter = filter;
   activeFilter = filter;
   const navBtns = document.querySelectorAll('.nav-btn');
-  const sections = ['dashboard','demandas','reunioes','infraestrutura','agenda'];
+  const sections = ['dashboard','demandas','reunioes','infraestrutura','agenda','configuracoes'];
   const idx = sections.indexOf(id);
   document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
   navBtns.forEach(b=>b.classList.remove('active'));
@@ -856,7 +858,7 @@ function showSectionFiltered(id, filter) {
   renderDemandas();
 }
 
-function renderAll() { renderDashboard(); updateBadge(); }
+function renderAll() { renderDashboard(); updateBadge(); if(document.getElementById('sec-configuracoes').classList.contains('active')) renderConfiguracoes(); }
 
 function updateBadge() {
   const n = state.demandas.filter(d=>d.tipo!=='infraestrutura'&&d.status!=='concluido').length;
@@ -884,8 +886,11 @@ function renderDashboard() {
   const andamento = state.demandas.filter(d=>d.tipo!=='infraestrutura'&&d.status==='andamento').length;
   const pendentes = state.demandas.filter(d=>d.tipo!=='infraestrutura'&&d.status==='pendente').length;
   const totalDem = state.demandas.filter(d=>d.tipo!=='infraestrutura'&&d.status!=='concluido').length;
+  
+  // Modificado: Apenas eventos não concluidos do respectivo modulo
   const proxEventos = state.eventos.filter(e=>e.data>=todayStr).length;
-  const proxReunioes = state.reunioes.filter(r=>r.data>=todayStr).length;
+  const proxReunioes = state.reunioes.filter(r=>r.data>=todayStr && r.status !== 'concluido').length;
+  
   const chamadosAbertos = state.infraestrutura.filter(e=>e.status!=='concluido').length;
 
   document.getElementById('stat-row').innerHTML = `
@@ -926,7 +931,9 @@ function renderDashboard() {
     ? urgDem.map(d=>demandaCard(d,true,true)).join('')
     : '<div class="empty-state"><i class="ti ti-circle-check"></i><p>Nenhuma urgência no momento</p></div>';
 
-  const allReu = [...state.reunioes].sort((a,b)=>a.data.localeCompare(b.data)).slice(0,5);
+  // MODIFICAÇÃO PRINCIPAL DA SOLICITAÇÃO: Filtrar apenas as reuniões NÃO concluídas.
+  const allReu = [...state.reunioes].filter(r => r.status !== 'concluido').sort((a,b)=>a.data.localeCompare(b.data)).slice(0,5);
+  
   document.getElementById('dash-reunioes').innerHTML = allReu.length
     ? allReu.map(r=>{
         const rOverdue = r.data < todayStr;
@@ -1509,6 +1516,81 @@ function salvarInfra() {
   editingInfraId=null; closeModal('modal-infra'); pushState(); renderInfra(); updateBadge(); renderDashboard();
   if(selectedInfra) showDetalheInfra(selectedInfra);
 }
+
+// ══════════════════════════════════════════════════
+// CONFIGURAÇÕES E LIMPEZA
+// ══════════════════════════════════════════════════
+function renderConfiguracoes() {
+  let concluidos = [];
+  
+  // Agrupar todas as categorias que tem status "concluído"
+  state.demandas.filter(d => d.status === 'concluido').forEach(d => {
+    concluidos.push({...d, _type: 'Demanda', _date: d.prazo || d.created || '—'});
+  });
+  state.reunioes.filter(r => r.status === 'concluido').forEach(r => {
+    concluidos.push({...r, _type: 'Reunião', _date: r.data || '—'});
+  });
+  state.infraestrutura.filter(i => i.status === 'concluido').forEach(i => {
+    concluidos.push({...i, _type: 'Infraestrutura', _date: i.created || '—'});
+  });
+
+  // Ordenar pela última data (Mais recente primeiro)
+  concluidos.sort((a, b) => b._date.localeCompare(a._date));
+
+  const listaEl = document.getElementById('lista-concluidos');
+  if(concluidos.length === 0) {
+    listaEl.innerHTML = '<div class="empty-state"><i class="ti ti-check"></i><p>Nenhum item concluído armazenado.</p></div>';
+    return;
+  }
+
+  listaEl.innerHTML = concluidos.map(item => {
+    return `<div class="demand-item" style="cursor:default">
+      <div class="d-info">
+        <div class="d-title">${escHtml(item.titulo)}</div>
+        <div class="d-meta"><span><i class="ti ti-calendar" style="margin-right:2px"></i> ${item._date !== '—' ? fmt(item._date) : 'Sem data'}</span></div>
+      </div>
+      <div class="d-right">
+        <span class="pill" style="background:var(--gray-lt);color:var(--gray)">${item._type}</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function confirmarLimpezaConcluidos() {
+  const div = document.createElement('div');
+  div.className = 'confirm-overlay';
+  div.innerHTML = `<div class="confirm-box">
+    <h3>Limpar Itens Concluídos</h3>
+    <p>Tem certeza que deseja excluir permanentemente <strong>TODOS</strong> os itens concluídos (demandas, reuniões e infraestrutura)?<br><br>Esta ação afetará o banco de dados principal e não poderá ser desfeita.</p>
+    <div class="confirm-btns">
+      <button class="btn-cancel" onclick="this.closest('.confirm-overlay').remove()">Cancelar</button>
+      <button class="btn-sm danger" onclick="limparConcluidos();this.closest('.confirm-overlay').remove()"><i class="ti ti-trash"></i>Excluir Tudo</button>
+    </div>
+  </div>`;
+  document.body.appendChild(div);
+}
+
+function limparConcluidos() {
+  // Encontrar os IDs de reuniões concluídas para também remover os eventos de agenda delas
+  const reunioesConcluidasIds = state.reunioes.filter(r => r.status === 'concluido').map(r => r.id);
+
+  // Executa a limpeza excluindo status 'concluido'
+  state.demandas = state.demandas.filter(d => d.status !== 'concluido');
+  state.reunioes = state.reunioes.filter(r => r.status !== 'concluido');
+  state.infraestrutura = state.infraestrutura.filter(i => i.status !== 'concluido');
+  
+  // Limpar os eventos atrelados às reuniões concluídas na agenda
+  state.eventos = state.eventos.filter(e => !reunioesConcluidasIds.includes(e._reuniaoId));
+
+  // Salvando no firebase e localStorage simultaneamente
+  pushState(); 
+  
+  // Renderizar a tela atualizada
+  renderConfiguracoes();
+  renderAll();
+  toast('Base de itens concluídos foi limpa com sucesso!');
+}
+
 
 // ══════════════════════════════════════════════════
 // INICIALIZAÇÃO
