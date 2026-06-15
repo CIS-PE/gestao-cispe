@@ -886,8 +886,8 @@ function renderDashboard() {
   const pendentes = state.demandas.filter(d=>d.tipo!=='infraestrutura'&&d.status==='pendente').length;
   const totalDem = state.demandas.filter(d=>d.tipo!=='infraestrutura'&&d.status!=='concluido').length;
   
-  const proxEventos = state.eventos.filter(e=>e.data>=todayStr).length;
-  const proxReunioes = state.reunioes.filter(r=>r.data>=todayStr && r.status !== 'concluido').length;
+  const proxEventos = state.eventos.filter(e => !e._reuniaoId).length;
+  const proxReunioes = state.reunioes.filter(r => r.status !== 'concluido').length;
   
   const chamadosAbertos = state.infraestrutura.filter(e=>e.status!=='concluido').length;
 
