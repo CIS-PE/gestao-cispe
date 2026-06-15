@@ -436,7 +436,7 @@ body{font-family:'DM Sans',sans-serif;background:#F2F1EE;color:#1C1B18;min-heigh
       <div id="dash-urgentes"></div>
     </div>
     <div>
-      <div class="section-sub">Próximas reuniões</div>
+      <div class="section-sub">Próximas reuniões e eventos</div>
       <div id="dash-reunioes"></div>
     </div>
   </div>
@@ -886,6 +886,16 @@ function renderDashboard() {
   const andamento = state.demandas.filter(d=>d.tipo!=='infraestrutura'&&d.status==='andamento').length;
   const pendentes = state.demandas.filter(d=>d.tipo!=='infraestrutura'&&d.status==='pendente').length;
   const totalDem = state.demandas.filter(d=>d.tipo!=='infraestrutura'&&d.status!=='concluido').length;
+  // 1. Pega as reuniões não concluídas
+  const reunioesValidas = state.reunioes.filter(r => r.status !== 'concluido').map(r => ({...r, _type: 'reuniao'}));
+  
+  // 2. Pega os eventos (ignorando aqueles que já são ligados a uma reunião, para não duplicar)
+  const eventosIndependentes = state.eventos.filter(e => !e._reuniaoId).map(e => ({...e, _type: 'evento'}));
+  
+  // 3. Junta tudo, ordena pela data mais próxima e pega apenas os 5 primeiros
+  const allItems = [...reunioesValidas, ...eventosIndependentes]
+    .sort((a,b)=>a.data.localeCompare(b.data))
+    .slice(0,5);
   
   // Modificado: Apenas eventos não concluidos do respectivo modulo
   const proxEventos = state.eventos.filter(e=>e.data>=todayStr).length;
@@ -934,19 +944,29 @@ function renderDashboard() {
   // MODIFICAÇÃO PRINCIPAL DA SOLICITAÇÃO: Filtrar apenas as reuniões NÃO concluídas.
   const allReu = [...state.reunioes].filter(r => r.status !== 'concluido').sort((a,b)=>a.data.localeCompare(b.data)).slice(0,5);
   
-  document.getElementById('dash-reunioes').innerHTML = allReu.length
-    ? allReu.map(r=>{
-        const rOverdue = r.data < todayStr;
-        const rOvCls = rOverdue ? ' overdue' : '';
-        const rOvBadge = rOverdue ? `<span class="overdue-badge" style="margin-left:6px"><i class="ti ti-alert-triangle" style="font-size:11px"></i>VENCIDO</span>` : '';
-        return `<div class="event-item${rOvCls}" style="border-left-color:${nivelBorderColor[r.nivel]||'var(--blue)'};cursor:pointer" onclick="showDashDetalhe('reuniao','${r.id}')">
-          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-            <div class="ev-title">${escHtml(r.titulo)}</div>${rOvBadge}
-          </div>
-          <div class="ev-meta"><span><i class="ti ti-calendar"></i>${fmt(r.data)}</span><span><i class="ti ti-clock"></i>${r.hora||'—'}</span><span>${modLabels[r.mod]||''}</span><span class="pill" style="background:var(--gray-lt);color:var(--gray);font-size:10px">${nivelLabels[r.nivel]||r.nivel}</span></div>
-        </div>`;
+  document.getElementById('dash-reunioes').innerHTML = allItems.length
+    ? allItems.map(item => {
+        const isOverdue = item.data < todayStr;
+        const ovCls = isOverdue ? ' overdue' : '';
+        const ovBadge = isOverdue ? `<span class="overdue-badge" style="margin-left:6px"><i class="ti ti-alert-triangle" style="font-size:11px"></i>VENCIDO</span>` : '';
+        
+        if (item._type === 'reuniao') {
+          return `<div class="event-item${ovCls}" style="border-left-color:${nivelBorderColor[item.nivel]||'var(--blue)'};cursor:pointer" onclick="showDashDetalhe('reuniao','${item.id}')">
+            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+              <div class="ev-title">${escHtml(item.titulo)}</div>${ovBadge}
+            </div>
+            <div class="ev-meta"><span><i class="ti ti-calendar"></i>${fmt(item.data)}</span><span><i class="ti ti-clock"></i>${item.hora||'—'}</span><span>${modLabels[item.mod]||''}</span><span class="pill" style="background:var(--gray-lt);color:var(--gray);font-size:10px">${nivelLabels[item.nivel]||item.nivel}</span></div>
+          </div>`;
+        } else {
+          return `<div class="event-item${ovCls}" style="border-left-color:${tipoEvColors[item.tipo]||'var(--blue)'};cursor:pointer" onclick="showDashDetalhe('evento','${item.id}')">
+            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+              <div class="ev-title">${escHtml(item.titulo)}</div>${ovBadge}
+            </div>
+            <div class="ev-meta"><span><i class="ti ti-calendar"></i>${fmt(item.data)}</span><span><i class="ti ti-clock"></i>${item.hora||'—'}</span><span class="pill p-evento-tag" style="font-size:10px">${tipoEvLabels[item.tipo]||item.tipo}</span></div>
+          </div>`;
+        }
       }).join('')
-    : '<div class="empty-state"><i class="ti ti-calendar-off"></i><p>Sem reuniões próximas</p></div>';
+    : '<div class="empty-state"><i class="ti ti-calendar-off"></i><p>Sem reuniões ou eventos próximos</p></div>';
 }
 
 // ══════════════════════════════════════════════════
