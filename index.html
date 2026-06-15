@@ -422,7 +422,6 @@ body{font-family:'DM Sans',sans-serif;background:#F2F1EE;color:#1C1B18;min-heigh
   <button class="nav-btn" onclick="showSection('configuracoes',this)"><i class="ti ti-settings"></i><span class="nav-label">Configurações</span></button>
 </div>
 
-
 <div class="app-body" id="app-body">
 <div class="content">
 
@@ -886,18 +885,7 @@ function renderDashboard() {
   const andamento = state.demandas.filter(d=>d.tipo!=='infraestrutura'&&d.status==='andamento').length;
   const pendentes = state.demandas.filter(d=>d.tipo!=='infraestrutura'&&d.status==='pendente').length;
   const totalDem = state.demandas.filter(d=>d.tipo!=='infraestrutura'&&d.status!=='concluido').length;
-  // 1. Pega as reuniões não concluídas
-  const reunioesValidas = state.reunioes.filter(r => r.status !== 'concluido').map(r => ({...r, _type: 'reuniao'}));
   
-  // 2. Pega os eventos (ignorando aqueles que já são ligados a uma reunião, para não duplicar)
-  const eventosIndependentes = state.eventos.filter(e => !e._reuniaoId).map(e => ({...e, _type: 'evento'}));
-  
-  // 3. Junta tudo, ordena pela data mais próxima e pega apenas os 5 primeiros
-  const allItems = [...reunioesValidas, ...eventosIndependentes]
-    .sort((a,b)=>a.data.localeCompare(b.data))
-    .slice(0,5);
-  
-  // Modificado: Apenas eventos não concluidos do respectivo modulo
   const proxEventos = state.eventos.filter(e=>e.data>=todayStr).length;
   const proxReunioes = state.reunioes.filter(r=>r.data>=todayStr && r.status !== 'concluido').length;
   
@@ -941,9 +929,19 @@ function renderDashboard() {
     ? urgDem.map(d=>demandaCard(d,true,true)).join('')
     : '<div class="empty-state"><i class="ti ti-circle-check"></i><p>Nenhuma urgência no momento</p></div>';
 
-  // MODIFICAÇÃO PRINCIPAL DA SOLICITAÇÃO: Filtrar apenas as reuniões NÃO concluídas.
-  const allReu = [...state.reunioes].filter(r => r.status !== 'concluido').sort((a,b)=>a.data.localeCompare(b.data)).slice(0,5);
+  // ══════════════════════════════════════════════════
+  // MISTURANDO REUNIÕES E EVENTOS NO PAINEL PRINCIPAL
+  // ══════════════════════════════════════════════════
+  const reunioesValidas = state.reunioes.filter(r => r.status !== 'concluido').map(r => ({...r, _type: 'reuniao'}));
   
+  // Filtrar eventos independentes (que não são cópias geradas de reuniões) para não duplicar no painel
+  const eventosIndependentes = state.eventos.filter(e => !e._reuniaoId).map(e => ({...e, _type: 'evento'}));
+  
+  const allItems = [...reunioesValidas, ...eventosIndependentes]
+    .sort((a,b)=>a.data.localeCompare(b.data))
+    .slice(0,5);
+
+  // Aqui é onde os cards estão a abrir a "showAgendaDetalhe" em vez de "showDashDetalhe"
   document.getElementById('dash-reunioes').innerHTML = allItems.length
     ? allItems.map(item => {
         const isOverdue = item.data < todayStr;
@@ -967,6 +965,7 @@ function renderDashboard() {
         }
       }).join('')
     : '<div class="empty-state"><i class="ti ti-calendar-off"></i><p>Sem reuniões ou eventos próximos</p></div>';
+}
 
 // ══════════════════════════════════════════════════
 // TO DO
@@ -1786,6 +1785,25 @@ function showDashDetalhe(tipo, id) {
         <button class="btn-sm success" onclick="concluirReuniao('${r.id}');closeDashDetail();"><i class="ti ti-check"></i>Concluir</button>
         <button class="btn-edit" onclick="closeDashDetail();editReuniao('${r.id}')"><i class="ti ti-pencil"></i>Editar</button>
         <button class="btn-sm danger" onclick="closeDashDetail();confirmarRemocao('${r.id}','reuniao')"><i class="ti ti-trash"></i></button>
+      </div>`;
+  } else if(tipo === 'evento') {
+    const e = state.eventos.find(x=>x.id===id);
+    if(!e) return;
+    html = `
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+        <span class="pill p-evento-tag">${tipoEvLabels[e.tipo]||e.tipo}</span>
+        <button onclick="closeDashDetail()" style="background:none;border:none;cursor:pointer;color:var(--text2);font-size:20px;line-height:1;padding:2px;border-radius:4px"><i class="ti ti-x"></i></button>
+      </div>
+      <div class="dp-title">${escHtml(e.titulo)}</div>
+      ${e.obs?`<div class="dp-desc" style="margin-top:10px">${escHtml(e.obs)}</div>`:''}
+      <div style="margin-top:12px">
+        <div class="dp-row"><span class="dp-lbl">Data</span><span class="dp-val">${fmt(e.data)}</span></div>
+        ${e.hora?`<div class="dp-row"><span class="dp-lbl">Horário</span><span class="dp-val">${e.hora}</span></div>`:''}
+        ${e.local?`<div class="dp-row"><span class="dp-lbl">Local</span><span class="dp-val">${escHtml(e.local)}</span></div>`:''}
+      </div>
+      <div class="action-row">
+        <button class="btn-edit" onclick="closeDashDetail();editEvento('${e.id}')"><i class="ti ti-pencil"></i>Editar</button>
+        <button class="btn-sm danger" onclick="closeDashDetail();confirmarRemocao('${e.id}','evento')"><i class="ti ti-trash"></i></button>
       </div>`;
   }
   content.innerHTML = html;
